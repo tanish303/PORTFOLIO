@@ -1,0 +1,814 @@
+import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
+import * as THREE from 'three';
+import { SpaceBackground } from './components/3d/SpaceBackground';
+import { Asteroids } from './components/3d/Asteroids';
+import { Sun } from './components/3d/Sun';
+import { Earth } from './components/3d/Earth';
+import { Planet } from './components/3d/Planet';
+import { Rocket } from './components/3d/Rocket';
+import { CameraController } from './components/3d/CameraController';
+import { SupernovaEffect } from './components/3d/SupernovaEffect';
+import { HUD } from './components/ui/HUD';
+import {
+  ALL_CELESTIAL_BODIES,
+  EARTH_DATA,
+  SECTION_PLANETS,
+  calculateOrbitalPosition,
+} from './data/planets';
+import type { CelestialBodyData, FlightPhase, FlightStatus } from './types/solar';
+import { soundController } from './audio/SoundController';
+import { MarsExperience } from './components/planet-experiences/mars/MarsExperience';
+import { PlanetEnvironment } from './components/planet-experiences/generic/PlanetEnvironment';
+import { PLANET_ENVIRONMENTS } from './data/planetEnvironments';
+import { PlanetDock } from './components/ui/PlanetDock';
+
+// Main 3D Scene content running inside Canvas
+interface UniverseSceneProps {
+  currentBody: CelestialBodyData;
+  targetBody: CelestialBodyData | null;
+  flightStatus: FlightStatus;
+  flightPhase: FlightPhase;
+  phaseProgress: number;
+  flightProgress: number;
+  currentRocketPos: [number, number, number];
+  currentRocketVel: [number, number, number];
+  isFlying: boolean;
+  isOverview: boolean;
+  supernovaProgress: number;
+  onSelectDestination: (id: string) => void;
+  onRocketWorldPosUpdate: (pos: THREE.Vector3, dir: THREE.Vector3, speed: number) => void;
+  onFrameUpdate: (elapsedTime: number, delta: number) => void;
+}
+
+const UniverseScene: React.FC<UniverseSceneProps> = ({
+  currentBody,
+  targetBody,
+  flightStatus,
+  flightPhase,
+  phaseProgress,
+  flightProgress,
+  currentRocketPos,
+  currentRocketVel,
+  isFlying,
+  isOverview,
+  supernovaProgress,
+  onSelectDestination,
+  onRocketWorldPosUpdate,
+  onFrameUpdate,
+}) => {
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const rocketWorldPos = useRef(new THREE.Vector3(...currentRocketPos));
+  const rocketWorldDir = useRef(new THREE.Vector3(0, 1, 0));
+
+  useFrame((state, delta) => {
+    const t = state.clock.getElapsedTime();
+    setElapsedTime(t);
+    onFrameUpdate(t, delta);
+  });
+
+  const handleRocketPosBroadcast = useCallback(
+    (pos: THREE.Vector3, dir: THREE.Vector3, speed: number) => {
+      rocketWorldPos.current.copy(pos);
+      rocketWorldDir.current.copy(dir);
+      onRocketWorldPosUpdate(pos, dir, speed);
+    },
+    [onRocketWorldPosUpdate]
+  );
+
+  const currentBodyPos = useMemo(() => {
+    return calculateOrbitalPosition(currentBody, elapsedTime);
+  }, [currentBody, elapsedTime]);
+
+  const targetBodyPos = useMemo(() => {
+    return targetBody ? calculateOrbitalPosition(targetBody, elapsedTime) : null;
+  }, [targetBody, elapsedTime]);
+
+  return (
+    <>
+      {/* Deep Space Starfield & Subtle Glowing Stars */}
+      <SpaceBackground />
+
+      {/* Realistic Rocky Asteroids drifting through solar system */}
+      <Asteroids />
+
+      {/* Multi-Phase Cinematic Camera Controller */}
+      <CameraController
+        currentLocationPos={currentBodyPos}
+        targetLocationPos={targetBodyPos}
+        currentRadius={currentBody.radius}
+        targetRadius={targetBody?.radius || 3.0}
+        hasRings={!!currentBody.rings}
+        rocketPos={rocketWorldPos.current}
+        rocketDir={rocketWorldDir.current}
+        isFlying={isFlying}
+        flightProgress={flightProgress}
+        flightPhase={flightPhase}
+        phaseProgress={phaseProgress}
+        isOverview={isOverview}
+      />
+
+      {/* Sun: Glowing solar surface with corona and sunlight */}
+      <Sun
+        onSelect={onSelectDestination}
+        isSelected={targetBody?.id === 'sun'}
+        isExploding={flightStatus === 'SUPERNOVA_EXPLODING'}
+      />
+
+      {/* Supernova Detonation Effect on Sun Collision */}
+      <SupernovaEffect
+        active={
+          flightStatus === 'SUPERNOVA_EXPLODING' ||
+          flightStatus === 'SUPERNOVA_RESETTING'
+        }
+        progress={supernovaProgress}
+      />
+
+      {/* Earth: Terra Base with pulsing YOU ARE HERE marker */}
+      <Earth
+        elapsedTime={elapsedTime}
+        onSelect={onSelectDestination}
+        isSelected={targetBody?.id === 'earth'}
+        isCurrentLocation={currentBody.id === 'earth'}
+      />
+
+      {/* All Orbiting Section Planets */}
+      {SECTION_PLANETS.map((planet) => (
+        <Planet
+          key={planet.id}
+          data={planet}
+          elapsedTime={elapsedTime}
+          onSelect={onSelectDestination}
+          isSelected={targetBody?.id === planet.id}
+          isCurrentLocation={currentBody.id === planet.id}
+        />
+      ))}
+
+      {/* Interplanetary Rocket with forward nose orientation & thruster trail */}
+      <Rocket
+        currentPos={currentRocketPos}
+        travelVelocity={currentRocketVel}
+        flightProgress={flightProgress}
+        flightPhase={flightPhase}
+        isFlying={isFlying}
+        visible={isFlying || isOverview}
+        onRocketWorldPosUpdate={handleRocketPosBroadcast}
+      />
+    </>
+  );
+};
+
+export function App() {
+  // Navigation & Location State
+  const [currentBodyId, setCurrentBodyId] = useState<string>('earth');
+  const [targetBodyId, setTargetBodyId] = useState<string | null>(null);
+  const [flightStatus, setFlightStatus] = useState<FlightStatus>('DOCKED');
+  const [flightPhase, setFlightPhase] = useState<FlightPhase>('IDLE');
+  const [phaseProgress, setPhaseProgress] = useState(0);
+  const [discoveredIds, setDiscoveredIds] = useState<Set<string>>(new Set(['earth']));
+
+  // Start with the whole solar system visible on initial landing
+  const [isOverview, setIsOverview] = useState<boolean>(true);
+
+  // Inside-Planet Planetary Experience State
+  const [activeExperience, setActiveExperience] = useState<string | null>(null);
+  const [transitionBodyId, setTransitionBodyId] = useState<string>('projects');
+  const [isAtmosphereTransition, setIsAtmosphereTransition] = useState<boolean>(false);
+
+  // Flight Physics & Telemetry State
+  const [flightProgress, setFlightProgress] = useState(0);
+  const [currentSpeedKmS, setCurrentSpeedKmS] = useState(7.8);
+  const [supernovaProgress, setSupernovaProgress] = useState(0);
+
+  // Trajectory tracking references
+  const elapsedTimeRef = useRef<number>(0);
+  const phaseStartTime = useRef<number>(0);
+  const launchDir = useRef<THREE.Vector3>(new THREE.Vector3(0, 1, 0.25).normalize());
+  const launchClearancePos = useRef<THREE.Vector3>(new THREE.Vector3());
+  const currentRocketPos = useRef<[number, number, number]>([30, 3.2, 0]);
+  const currentRocketVel = useRef<[number, number, number]>([0, 1, 0]);
+  const rocketSimPos = useRef<THREE.Vector3>(new THREE.Vector3(30, 3.2, 0));
+  const rocketSimVel = useRef<THREE.Vector3>(new THREE.Vector3(0, 1, 0));
+  const initialDistToTarget = useRef<number>(100);
+  const focusDuration = useRef<number>(1.2);
+  const lastHudUpdate = useRef<number>(0);
+
+  // Resolve body objects
+  const currentBody = useMemo(() => {
+    return ALL_CELESTIAL_BODIES.find((b) => b.id === currentBodyId) || EARTH_DATA;
+  }, [currentBodyId]);
+
+  const targetBody = useMemo(() => {
+    return targetBodyId ? ALL_CELESTIAL_BODIES.find((b) => b.id === targetBodyId) || null : null;
+  }, [targetBodyId]);
+
+  const isFlying = flightPhase !== 'IDLE';
+
+  // Audio initialization on user interaction
+  useEffect(() => {
+    const handleFirstClick = () => {
+      soundController.init();
+      window.removeEventListener('pointerdown', handleFirstClick);
+    };
+    window.addEventListener('pointerdown', handleFirstClick);
+    return () => window.removeEventListener('pointerdown', handleFirstClick);
+  }, []);
+
+  // Technical Alert Toast Notification
+  const [technicalToast, setTechnicalToast] = useState<{
+    title: string;
+    subtitle: string;
+  } | null>(null);
+  const toastTimeoutRef = useRef<number | null>(null);
+
+  const showTechnicalToast = useCallback((title: string, subtitle: string) => {
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
+    setTechnicalToast({ title, subtitle });
+    toastTimeoutRef.current = window.setTimeout(() => {
+      setTechnicalToast(null);
+    }, 2800);
+  }, []);
+
+  // Initiate Flight Navigation to a Target Planet or Sun
+  const handleSelectDestination = useCallback(
+    (id: string) => {
+      if (flightPhase !== 'IDLE') return;
+
+      // When clicking the current planet:
+      if (id === currentBodyId || (activeExperience && id === activeExperience)) {
+        if (activeExperience) {
+          // 1. Inside planet: show red technical toast
+          soundController.playTargetLock();
+          const activeBody = ALL_CELESTIAL_BODIES.find((b) => b.id === (activeExperience || id)) || currentBody;
+          showTechnicalToast(
+            `SECTOR SCAN LOCKED // ALREADY VIEWING ${activeBody.name.toUpperCase()}`,
+            'ACTIVE PLANETARY SURFACE • SELECT ALTERNATE DESTINATION TO LAUNCH'
+          );
+          return;
+        } else {
+          // 2. Outside planet: enter directly inside with a short cloud animation!
+          if (currentBody.id !== 'sun') {
+            setTransitionBodyId(currentBody.id);
+            setIsAtmosphereTransition(true);
+            soundController.playAtmosphericEntry();
+            setTimeout(() => {
+              setActiveExperience(currentBody.id);
+            }, 550);
+            setTimeout(() => {
+              setIsAtmosphereTransition(false);
+            }, 1300);
+          }
+          return;
+        }
+      }
+
+      const target = ALL_CELESTIAL_BODIES.find((b) => b.id === id);
+      if (!target) return;
+
+      if (activeExperience) {
+        setActiveExperience(null);
+      }
+
+      soundController.playTargetLock();
+      setTargetBodyId(id);
+      const tFocus = isOverview ? 1.4 : 0.9;
+      focusDuration.current = tFocus;
+      setIsOverview(false); // Smoothly stop overview mode, focus on current departure planet
+
+      const now = performance.now() / 1000;
+      phaseStartTime.current = now;
+
+      // 1. Current departure planet position
+      const currentPlanetCenter = new THREE.Vector3(
+        ...calculateOrbitalPosition(currentBody, elapsedTimeRef.current)
+      );
+
+      // 2. Compute outward vertical launch direction strictly from surface perch:
+      // launchDirection = normalize(rocketPosition - currentPlanetCenter)
+      const currentRocketPosVec = new THREE.Vector3(...currentRocketPos.current);
+      let outDir = currentRocketPosVec.clone().sub(currentPlanetCenter).normalize();
+      if (outDir.lengthSq() < 0.01) {
+        outDir = new THREE.Vector3(0, 1, 0);
+      }
+      launchDir.current.copy(outDir);
+
+      // 3. Rocket initial launch perch on departure planet surface
+      const surfacePos = currentPlanetCenter.clone().addScaledVector(outDir, currentBody.radius + 0.2);
+      rocketSimPos.current.copy(surfacePos);
+      rocketSimVel.current.copy(outDir);
+
+      currentRocketPos.current = [surfacePos.x, surfacePos.y, surfacePos.z];
+      currentRocketVel.current = [outDir.x, outDir.y, outDir.z];
+
+      // 4. Clearance waypoint
+      const clearanceDist = currentBody.radius + (currentBody.rings ? 7.5 : 4.5);
+      launchClearancePos.current = currentPlanetCenter.clone().addScaledVector(outDir, clearanceDist);
+
+      // 5. Initial distance to target for flight progress HUD
+      const estTargetPos = new THREE.Vector3(...calculateOrbitalPosition(target, elapsedTimeRef.current));
+      initialDistToTarget.current = Math.max(10, surfacePos.distanceTo(estTargetPos));
+
+      // 6. Begin Phase 1: FOCUS_DEPARTURE
+      setFlightPhase('FOCUS_DEPARTURE');
+      setFlightStatus(id === 'sun' ? 'SUPERNOVA_WARN' : 'LAUNCHING');
+      setFlightProgress(0);
+      setPhaseProgress(0);
+      setCurrentSpeedKmS(7.8);
+    },
+    [currentBody, currentBodyId, flightPhase, isOverview, activeExperience, showTechnicalToast]
+  );
+
+  // Return Home Shortcut
+  const handleReturnHome = useCallback(() => {
+    handleSelectDestination('earth');
+  }, [handleSelectDestination]);
+
+  // Toggle Camera Overview
+  const handleToggleOverview = useCallback(() => {
+    setIsOverview((prev) => !prev);
+  }, []);
+
+  // Return to Orbit from Surface Experience (returns to full System Overview)
+  const handleReturnToOrbit = useCallback(() => {
+    setIsAtmosphereTransition(true);
+    soundController.playAtmosphericEntry();
+    setTimeout(() => {
+      setActiveExperience(null);
+      setIsOverview(true); // Return to full system overview
+    }, 550);
+    setTimeout(() => {
+      setIsAtmosphereTransition(false);
+    }, 1300);
+  }, []);
+
+  // Re-enter Surface when parked on current planet
+  const handleEnterCurrentSurface = useCallback(() => {
+    if (activeExperience || flightPhase !== 'IDLE' || currentBody.id === 'sun') return;
+    setTransitionBodyId(currentBody.id);
+    setIsAtmosphereTransition(true);
+    soundController.playAtmosphericEntry();
+    setTimeout(() => {
+      setActiveExperience(currentBody.id);
+    }, 750);
+    setTimeout(() => {
+      setIsAtmosphereTransition(false);
+    }, 2100);
+  }, [activeExperience, flightPhase, currentBody.id]);
+
+  // Physics & Animation Loop Frame Callback
+  const handleFrameUpdate = useCallback(
+    (elapsedTime: number, delta: number) => {
+      elapsedTimeRef.current = elapsedTime;
+      const dt = Math.min(delta, 0.05);
+
+      // 1. SUPERNOVA DETONATION
+      if (flightStatus === 'SUPERNOVA_EXPLODING') {
+        setSupernovaProgress((prev) => {
+          const next = prev + delta * 0.45;
+          if (next >= 1.0) {
+            setFlightStatus('SUPERNOVA_RESETTING');
+            return 1.0;
+          }
+          return next;
+        });
+        return;
+      }
+
+      // 2. SUPERNOVA QUANTUM REBIRTH RESET
+      if (flightStatus === 'SUPERNOVA_RESETTING') {
+        setSupernovaProgress((prev) => {
+          const next = prev - delta * 0.55;
+          if (next <= 0) {
+            setCurrentBodyId('earth');
+            setTargetBodyId(null);
+            setFlightPhase('IDLE');
+            setFlightStatus('DOCKED');
+            const earthSpawn = calculateOrbitalPosition(EARTH_DATA, elapsedTime);
+            currentRocketPos.current = [earthSpawn[0], earthSpawn[1] + EARTH_DATA.radius + 0.2, earthSpawn[2]];
+            currentRocketVel.current = [0, 1, 0];
+            rocketSimPos.current.set(earthSpawn[0], earthSpawn[1] + EARTH_DATA.radius + 0.2, earthSpawn[2]);
+            rocketSimVel.current.set(0, 1, 0);
+            setIsOverview(true);
+            return 0;
+          }
+          return next;
+        });
+        return;
+      }
+
+      // 3. FLIGHT TRAJECTORY CALCULATION (Velocity-Based Direct Straight-Line Movement)
+      if (flightPhase !== 'IDLE' && targetBody) {
+        const now = performance.now() / 1000;
+        const tInPhase = now - phaseStartTime.current;
+
+        const C_curr = new THREE.Vector3(...calculateOrbitalPosition(currentBody, elapsedTime));
+        const liveTarget = new THREE.Vector3(...calculateOrbitalPosition(targetBody, elapsedTime));
+
+        // Update overall HUD flight progress based on distance to destination
+        const currentDistToTarget = rocketSimPos.current.distanceTo(liveTarget);
+        const touchDist = targetBody.radius + 0.2;
+        const prog = THREE.MathUtils.clamp(
+          1 - (currentDistToTarget - touchDist) / Math.max(1, initialDistToTarget.current),
+          0,
+          1
+        );
+
+        let phaseP = 0;
+        let currentSpeed = 7.8;
+
+        switch (flightPhase) {
+          case 'FOCUS_DEPARTURE': {
+            const dur = focusDuration.current;
+            const p = THREE.MathUtils.clamp(tInPhase / dur, 0, 1);
+            phaseP = p;
+
+            // Rocket rests on departure surface pointing vertically outward
+            const surfacePos = C_curr.clone().addScaledVector(launchDir.current, currentBody.radius + 0.2);
+            rocketSimPos.current.copy(surfacePos);
+            rocketSimVel.current.copy(launchDir.current);
+            currentSpeed = 7.8;
+
+            if (tInPhase >= dur) {
+              setFlightPhase('HOLD_DEPARTURE');
+              phaseStartTime.current = now;
+              soundController.playEngineSpool();
+            }
+            break;
+          }
+
+          case 'HOLD_DEPARTURE': {
+            const dur = 0.7;
+            const p = THREE.MathUtils.clamp(tInPhase / dur, 0, 1);
+            phaseP = p;
+
+            // Hold current planet framed in viewport while engines spool up
+            const surfacePos = C_curr.clone().addScaledVector(launchDir.current, currentBody.radius + 0.2);
+            rocketSimPos.current.copy(surfacePos);
+            rocketSimVel.current.copy(launchDir.current);
+            currentSpeed = 7.8 + p * 4.0;
+
+            if (tInPhase >= dur) {
+              setFlightPhase('VERTICAL_ASCENT');
+              phaseStartTime.current = now;
+              soundController.playThrusterBlast();
+            }
+            break;
+          }
+
+          case 'VERTICAL_ASCENT': {
+            const dur = 1.2;
+            const p = THREE.MathUtils.clamp(tInPhase / dur, 0, 1);
+            phaseP = p;
+
+            // Rocket emerges vertically outward from current planet along launchDir
+            const easeAscent = p * p;
+            const clearanceDist = currentBody.radius + (currentBody.rings ? 7.5 : 4.5);
+            const surfaceDist = currentBody.radius + 0.2;
+            const currentAltitude = surfaceDist + (clearanceDist - surfaceDist) * easeAscent;
+
+            const ascentPos = C_curr.clone().addScaledVector(launchDir.current, currentAltitude);
+            rocketSimPos.current.copy(ascentPos);
+
+            // Velocity vector points strictly along outward launch normal
+            const ascentSpeed = 15.0 + easeAscent * 35.0;
+            const velocity = launchDir.current.clone().multiplyScalar(ascentSpeed);
+            rocketSimVel.current.copy(velocity);
+            currentSpeed = ascentSpeed;
+
+            if (tInPhase >= dur) {
+              setFlightPhase('TRANSITION_TURN');
+              phaseStartTime.current = now;
+              launchClearancePos.current.copy(rocketSimPos.current);
+            }
+            break;
+          }
+
+          case 'TRANSITION_TURN': {
+            const dur = 1.0;
+            const p = THREE.MathUtils.clamp(tInPhase / dur, 0, 1);
+            phaseP = p;
+
+            // Destination direction from current clearance position
+            const toDest = liveTarget.clone().sub(rocketSimPos.current).normalize();
+
+            // Smoothly curve velocity vector from vertical launchDir toward destination
+            const ease = p * p * (3 - 2 * p);
+            const turnDir = launchDir.current.clone().lerp(toDest, ease).normalize();
+
+            const turnSpeed = 45.0 + ease * 35.0;
+            const velocity = turnDir.clone().multiplyScalar(turnSpeed);
+            rocketSimVel.current.copy(velocity);
+            rocketSimPos.current.addScaledVector(velocity, dt);
+            currentSpeed = turnSpeed;
+
+            if (tInPhase >= dur) {
+              setFlightPhase('DIRECT_CRUISE');
+              phaseStartTime.current = now;
+              setFlightStatus(targetBody.id === 'sun' ? 'SUPERNOVA_WARN' : 'CRUISING');
+            }
+            break;
+          }
+
+          case 'DIRECT_CRUISE': {
+            // Straight-line travel: needle points directly at destination
+            const toTarget = liveTarget.clone().sub(rocketSimPos.current);
+            const distToTarget = toTarget.length();
+            let cruiseDir = toTarget.clone().normalize();
+
+            // Intervening planetary collision avoidance
+            for (const body of ALL_CELESTIAL_BODIES) {
+              if (body.id === currentBody.id || body.id === targetBody.id) continue;
+              const bodyPos = new THREE.Vector3(...calculateOrbitalPosition(body, elapsedTime));
+              const toBody = bodyPos.clone().sub(rocketSimPos.current);
+              const dist = toBody.length();
+              const safeRadius = body.id === 'sun' ? body.radius + 6.0 : body.radius + 3.2;
+
+              if (dist < safeRadius) {
+                let pushAway = rocketSimPos.current.clone().sub(bodyPos);
+                if (pushAway.lengthSq() < 0.01) pushAway.set(0, 1, 0);
+                pushAway.normalize();
+                const factor = (safeRadius - dist) / safeRadius;
+                cruiseDir.addScaledVector(pushAway, factor * 2.0).normalize();
+              }
+            }
+
+            // Velocity-based movement: velocity = desiredDirection * speed; position += velocity * delta
+            const cruiseSpeed = THREE.MathUtils.clamp(distToTarget * 1.5, 60.0, 95.0);
+            const velocity = cruiseDir.clone().multiplyScalar(cruiseSpeed);
+            rocketSimVel.current.copy(velocity);
+            rocketSimPos.current.addScaledVector(velocity, dt);
+            currentSpeed = cruiseSpeed;
+
+            if (distToTarget <= targetBody.radius + 6.0) {
+              setFlightPhase('APPROACH_DOCK');
+              phaseStartTime.current = now;
+              setFlightStatus('BRAKING');
+            }
+            break;
+          }
+
+          case 'APPROACH_DOCK': {
+            // Final approach: decelerate and touch destination surface
+            const toTarget = liveTarget.clone().sub(rocketSimPos.current);
+            const distToTarget = toTarget.length();
+            const approachDir = toTarget.clone().normalize();
+
+            const surfaceContactDist = targetBody.radius + 0.2;
+            const remaining = distToTarget - surfaceContactDist;
+
+            // Robust touchdown condition: planet is orbiting continuously, so threshold accounts for orbital displacement
+            const isTouchdown = remaining <= 0.45 || distToTarget <= surfaceContactDist + 0.35 || tInPhase > 1.6;
+
+            if (isTouchdown) {
+              // Rocket physically touches the destination planet surface — end flight immediately
+              let outwardNormal = rocketSimPos.current.clone().sub(liveTarget);
+              if (outwardNormal.lengthSq() < 0.01) {
+                outwardNormal = new THREE.Vector3(0, 1, 0);
+              } else {
+                outwardNormal.normalize();
+              }
+
+              const touchPoint = liveTarget.clone().addScaledVector(outwardNormal, surfaceContactDist);
+              rocketSimPos.current.copy(touchPoint);
+              rocketSimVel.current.copy(outwardNormal);
+
+              if (targetBody.id === 'sun') {
+                setFlightStatus('SUPERNOVA_EXPLODING');
+                setSupernovaProgress(0);
+                soundController.playSupernova();
+              } else {
+                const reachedBodyId = targetBody.id;
+                setCurrentBodyId(reachedBodyId);
+                setTargetBodyId(null);
+                setFlightPhase('IDLE');
+                setFlightStatus('DOCKED');
+                soundController.playArrival();
+
+                // Save outward normal for future liftoffs from this planet
+                launchDir.current.copy(outwardNormal);
+
+                setDiscoveredIds((prev) => {
+                  const next = new Set(prev);
+                  next.add(reachedBodyId);
+                  return next;
+                });
+
+                // Initiate cinematic atmospheric descent to destination planet
+                setTransitionBodyId(reachedBodyId);
+                setIsAtmosphereTransition(true);
+                soundController.playAtmosphericEntry();
+
+                setTimeout(() => {
+                  setActiveExperience(reachedBodyId);
+                }, 550);
+
+                setTimeout(() => {
+                  setIsAtmosphereTransition(false);
+                }, 1300);
+              }
+
+              setFlightProgress(1.0);
+              setPhaseProgress(1.0);
+              setCurrentSpeedKmS(7.8);
+            } else {
+              // Smooth deceleration towards surface with guaranteed closing speed against orbiting body
+              const approachSpeed = THREE.MathUtils.clamp(remaining * 6.0 + 10.0, 15.0, 52.0);
+              const velocity = approachDir.clone().multiplyScalar(approachSpeed);
+              rocketSimVel.current.copy(velocity);
+              rocketSimPos.current.addScaledVector(velocity, dt);
+              currentSpeed = approachSpeed;
+            }
+            break;
+          }
+        }
+
+        // Throttled HUD update for smooth 60fps rendering without React render lockup
+        if (now - lastHudUpdate.current > 0.08) {
+          lastHudUpdate.current = now;
+          setFlightProgress(prog);
+          setPhaseProgress(phaseP);
+          setCurrentSpeedKmS(Math.round(currentSpeed));
+        }
+
+        currentRocketPos.current = [rocketSimPos.current.x, rocketSimPos.current.y, rocketSimPos.current.z];
+        currentRocketVel.current = [rocketSimVel.current.x, rocketSimVel.current.y, rocketSimVel.current.z];
+      } else {
+        // IDLE / DOCKED: Rocket sits perched on currentBody launch surface
+        const currentCenter = new THREE.Vector3(...calculateOrbitalPosition(currentBody, elapsedTime));
+        const outDir = launchDir.current;
+        const perchedPos = currentCenter.clone().addScaledVector(outDir, currentBody.radius + 0.2);
+
+        rocketSimPos.current.copy(perchedPos);
+        rocketSimVel.current.copy(outDir);
+
+        currentRocketPos.current = [perchedPos.x, perchedPos.y, perchedPos.z];
+        currentRocketVel.current = [outDir.x, outDir.y, outDir.z];
+      }
+    },
+    [currentBody, targetBody, flightStatus, flightPhase]
+  );
+
+  const handleRocketWorldPosUpdate = useCallback(
+    (_pos: THREE.Vector3, _dir: THREE.Vector3, _speed: number) => {},
+    []
+  );
+
+  return (
+    <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden' }}>
+      {/* 3D WebGL Canvas */}
+      <div className="canvas-container">
+        <Canvas
+          camera={{ position: [0, 145, 175], fov: 45, near: 0.1, far: 2000 }}
+          gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
+        >
+          <UniverseScene
+            currentBody={currentBody}
+            targetBody={targetBody}
+            flightStatus={flightStatus}
+            flightPhase={flightPhase}
+            phaseProgress={phaseProgress}
+            flightProgress={flightProgress}
+            currentRocketPos={currentRocketPos.current}
+            currentRocketVel={currentRocketVel.current}
+            isFlying={isFlying}
+            isOverview={isOverview}
+            supernovaProgress={supernovaProgress}
+            onSelectDestination={handleSelectDestination}
+            onRocketWorldPosUpdate={handleRocketWorldPosUpdate}
+            onFrameUpdate={handleFrameUpdate}
+          />
+        </Canvas>
+      </div>
+
+      {/* 2.5D Photorealistic Mars Cinematic World (MARS ONLY, UNTOUCHED) */}
+      {activeExperience === 'projects' && (
+        <MarsExperience onReturnToOrbit={handleReturnToOrbit} />
+      )}
+
+      {/* 2.5D Photorealistic Generic Planetary Worlds (Earth, Mercury, Venus, Jupiter, Saturn, Uranus, Neptune) */}
+      {activeExperience && activeExperience !== 'projects' && PLANET_ENVIRONMENTS[activeExperience] && (
+        <PlanetEnvironment
+          config={PLANET_ENVIRONMENTS[activeExperience]}
+          onReturnToOrbit={handleReturnToOrbit}
+        />
+      )}
+
+      {/* Planetary Navigation Dock inside Planet Views (Identical to System Overview) */}
+      {activeExperience && (
+        <div
+          className="planet-surface-dock-wrapper"
+          style={{
+            position: 'fixed',
+            bottom: '22px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 60,
+            pointerEvents: 'auto',
+          }}
+        >
+          <PlanetDock
+            allBodies={ALL_CELESTIAL_BODIES}
+            currentBody={currentBody}
+            targetBody={targetBody}
+            onSelectDestination={handleSelectDestination}
+          />
+        </div>
+      )}
+
+      {/* Cinematic Atmospheric Cloud Transition (Pure Clouds, NO Text Screens) */}
+      {(() => {
+        const isMars = transitionBodyId === 'projects';
+        const planetConfig = PLANET_ENVIRONMENTS[transitionBodyId];
+        const themeRgb = isMars ? '239, 68, 68' : planetConfig?.themeColorRgb || '56, 189, 248';
+
+        return (
+          <div
+            className="atmospheric-clouds-overlay"
+            style={{
+              opacity: isAtmosphereTransition ? 1 : 0,
+              pointerEvents: isAtmosphereTransition ? 'auto' : 'none',
+              ['--cloud-rgb' as string]: themeRgb,
+            }}
+          >
+            <div className="cloud-haze-sweep" />
+            <div className="cloud-layer cloud-layer-1" />
+            <div className="cloud-layer cloud-layer-2" />
+          </div>
+        );
+      })()}
+
+      {/* Red Technical Alert Toast (Shown when clicking same planet while already inside) */}
+      {technicalToast && (
+        <div className="technical-alert-toast">
+          <div className="technical-alert-inner">
+            <div className="technical-alert-glow" />
+            <div className="technical-alert-icon">⚠</div>
+            <div className="technical-alert-content">
+              <div className="technical-alert-title">{technicalToast.title}</div>
+              <div className="technical-alert-sub">{technicalToast.subtitle}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Futuristic Sci-Fi Mission Control HUD (Active only when in orbit) */}
+      {!activeExperience && (
+        <HUD
+          currentBody={currentBody}
+          targetBody={targetBody}
+          flightStatus={flightStatus}
+          flightPhase={flightPhase}
+          discoveredIds={discoveredIds}
+          totalPlanets={SECTION_PLANETS.length + 1}
+          flightProgress={flightProgress}
+          currentSpeedKmS={currentSpeedKmS}
+          isOverview={isOverview}
+          allBodies={ALL_CELESTIAL_BODIES}
+          onSelectDestination={handleSelectDestination}
+          onReturnHome={handleReturnHome}
+          onToggleOverview={handleToggleOverview}
+        />
+      )}
+
+      {/* Quick Surface Descent button if parked at any planet in orbit */}
+      {currentBody.id !== 'sun' && !activeExperience && flightPhase === 'IDLE' && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '95px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 35,
+          }}
+        >
+          <button
+            onClick={handleEnterCurrentSurface}
+            className="mars-return-btn"
+            style={{
+              borderColor:
+                currentBody.id === 'projects'
+                  ? '#ef4444'
+                  : PLANET_ENVIRONMENTS[currentBody.id]?.themeColor || '#38bdf8',
+              background: 'rgba(12, 12, 20, 0.85)',
+              boxShadow: `0 0 25px rgba(${
+                currentBody.id === 'projects'
+                  ? '239, 68, 68'
+                  : PLANET_ENVIRONMENTS[currentBody.id]?.themeColorRgb || '56, 189, 248'
+              }, 0.5)`,
+            }}
+          >
+            <span>
+              {currentBody.id === 'projects'
+                ? '🔴 DESCEND TO MARS SURFACE // PROJECTS'
+                : `🪐 DESCEND TO ${currentBody.name.toUpperCase()} SURFACE`}
+            </span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default App;
