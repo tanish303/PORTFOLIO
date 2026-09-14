@@ -10,6 +10,7 @@ import { VenusExperiencePanel } from '../venus/VenusExperiencePanel';
 import { JupiterEducationPanel } from '../jupiter/JupiterEducationPanel';
 import { SaturnGuestbookPanel } from '../saturn/SaturnGuestbookPanel';
 import { UranusConnectPanel } from '../uranus/UranusConnectPanel';
+import { NeptuneAskAIPanel } from '../neptune/NeptuneAskAIPanel';
 import { soundController } from '../../../audio/SoundController';
 
 interface PlanetEnvironmentProps {
@@ -43,6 +44,8 @@ export const PlanetEnvironment: React.FC<PlanetEnvironmentProps> = ({ config, on
         return <SaturnGuestbookPanel uiX={parallax.uiX} uiY={parallax.uiY} />;
       case 'contact':
         return <UranusConnectPanel uiX={parallax.uiX} uiY={parallax.uiY} />;
+      case 'askai':
+        return <NeptuneAskAIPanel uiX={parallax.uiX} uiY={parallax.uiY} />;
       default:
         return <PlanetGlassPanel config={config} uiX={parallax.uiX} uiY={parallax.uiY} />;
     }

@@ -3244,26 +3244,271 @@ html, body, #root {
   box-shadow: 0 0 16px rgba(239, 68, 68, 0.35);
 }
 
-/* Responsive adjustments for mobile / small screens */
-@media (max-width: 900px) {
-  .mars-projects-grid {
-    grid-template-columns: 1fr;
+/* --- 7. NEPTUNE ASK AI PANEL --- */
+.neptune-centered-panel-wrapper {
+  animation: mercuryCenterEnter 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.neptune-ai-card {
+  width: min(520px, 92vw);
+  height: min(520px, 78vh);
+  display: flex;
+  flex-direction: column;
+  background: rgba(10, 16, 32, 0.75);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  border-radius: 20px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.75), 0 0 40px rgba(56, 189, 248, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+}
+
+.neptune-ai-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(14, 22, 44, 0.65);
+}
+
+.neptune-ai-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.neptune-ai-bot-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.neptune-ai-title {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.2px;
+}
+
+.neptune-ai-subtitle {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: #94a3b8;
+  margin: 2px 0 0 0;
+}
+
+.neptune-ai-reset-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.neptune-ai-reset-btn:hover {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: #38bdf8;
+  color: #ffffff;
+  transform: rotate(-45deg);
+}
+
+.neptune-ai-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(56, 189, 248, 0.3) transparent;
+}
+
+.neptune-ai-messages::-webkit-scrollbar {
+  width: 5px;
+}
+
+.neptune-ai-messages::-webkit-scrollbar-thumb {
+  background: rgba(56, 189, 248, 0.3);
+  border-radius: 4px;
+}
+
+.neptune-ai-msg-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  max-width: 86%;
+}
+
+.neptune-ai-msg-row.user-row {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.neptune-ai-msg-row.bot-row {
+  align-self: flex-start;
+}
+
+.neptune-ai-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.neptune-ai-avatar.bot-avatar {
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.neptune-ai-avatar.user-avatar {
+  background: rgba(129, 140, 248, 0.2);
+  border: 1px solid rgba(129, 140, 248, 0.35);
+}
+
+.neptune-ai-bubble {
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.neptune-ai-bubble.user-bubble {
+  background: rgba(56, 189, 248, 0.22);
+  color: #ffffff;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-top-right-radius: 3px;
+}
+
+.neptune-ai-bubble.bot-bubble {
+  background: rgba(255, 255, 255, 0.06);
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top-left-radius: 3px;
+}
+
+.neptune-ai-bubble.typing-bubble {
+  padding: 10px 16px;
+}
+
+.neptune-typing-dots {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  height: 16px;
+}
+
+.neptune-typing-dots .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #38bdf8;
+  opacity: 0.6;
+  animation: neptuneDotBounce 1.2s infinite ease-in-out;
+}
+
+.neptune-typing-dots .dot:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.neptune-typing-dots .dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.neptune-typing-dots .dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes neptuneDotBounce {
+  0%, 80%, 100% {
+    transform: scale(0.6);
+    opacity: 0.4;
   }
-  .venus-experience-grid {
-    grid-template-columns: 1fr;
+  40% {
+    transform: scale(1.1);
+    opacity: 1;
   }
-  .jupiter-education-flow {
-    flex-direction: column;
-  }
-  .jupiter-flow-arrow {
-    transform: rotate(90deg);
-  }
-  .saturn-guestbook-grid {
-    grid-template-columns: 1fr;
-  }
-  .uranus-social-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+}
+
+.neptune-ai-footer {
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(14, 22, 44, 0.65);
+}
+
+.neptune-ai-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 24px;
+  padding: 4px 6px 4px 16px;
+  transition: all 0.2s ease;
+}
+
+.neptune-ai-input-wrap:focus-within {
+  border-color: rgba(56, 189, 248, 0.5);
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.neptune-ai-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #ffffff;
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+}
+
+.neptune-ai-input::placeholder {
+  color: rgba(148, 163, 184, 0.65);
+}
+
+.neptune-ai-send-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(56, 189, 248, 0.25);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  color: #38bdf8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.neptune-ai-send-btn:hover:not(:disabled) {
+  background: #38bdf8;
+  color: #0b1120;
+  transform: scale(1.05);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.5);
+}
+
+.neptune-ai-send-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 
