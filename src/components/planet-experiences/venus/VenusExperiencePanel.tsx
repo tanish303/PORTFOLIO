@@ -21,9 +21,9 @@ interface ExperienceItem {
 const EXPERIENCES: ExperienceItem[] = [
   {
     id: 'cloudtechner',
-    role: 'DevOps Trainee & Backend Engineer',
+    role: 'DevOps & Backend Engineer',
     company: 'CloudTechner Services Private Limited',
-    type: 'Internship / Trainee',
+    type: 'Internship',
     duration: 'Mar 23, 2026 – Sep 21, 2026',
     location: 'Gurugram, India · Hybrid/Remote',
     description: [
