@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { soundController } from '../../../audio/SoundController';
 
 interface GlassProjectPanelProps {
@@ -8,203 +8,204 @@ interface GlassProjectPanelProps {
 
 interface ProjectItem {
   id: string;
-  badge: string;
-  index: string;
   title: string;
-  subtitle: string;
   description: string;
-  extendedDetails: string;
+  image: string;
+  video: string;
   technologies: string[];
-  metrics: { label: string; value: string }[];
+  githubUrl: string;
+  liveUrl?: string;
 }
 
-const PROJECTS_DATA: ProjectItem[] = [
+const PROJECTS: ProjectItem[] = [
   {
     id: 'tweniq',
-    badge: 'PROJECT // 01',
-    index: 'SYS.TWENIQ.01',
-    title: 'TWENIQ',
-    subtitle: 'Dual-Mode Social & Professional Platform',
+    title: 'TweniQ',
     description:
-      'A dual-mode networking platform allowing users to toggle between social and professional profiles, with distinct feeds, real-time chat, polls, and followers.',
-    extendedDetails:
-      'Engineered completely solo to master full-stack and real-time systems. Features dual user profiles, two independent chat identities per account, 40+ REST API endpoints, JWT authentication, and WebSockets/Socket.io real-time chat infrastructure.',
-    technologies: ['React', 'JavaScript', 'Tailwind CSS', 'Node.js', 'Express', 'MongoDB', 'Socket.io', 'JWT'],
-    metrics: [
-      { label: 'ENDPOINTS', value: '40+ APIs' },
-      { label: 'PROFILES', value: 'Dual Mode' },
-      { label: 'REAL-TIME', value: 'Socket.io' },
-    ],
+      'A dual-mode social and professional networking platform. TweniQ allows users to switch between social and professional profiles, with unique feeds, interactions, and post types for each mode. Features include real-time chat, polls, likes, saved posts, followers/following, and profile customization.',
+    image: '/tweniq.png',
+    video: 'https://res.cloudinary.com/dhmwi7kcd/video/upload/v1773831935/Tweniq_k01j2m.mp4',
+    technologies: ['React', 'JavaScript', 'Tailwind CSS', 'Node.js', 'Express', 'MongoDB', 'Socket.io'],
+    githubUrl: 'https://github.com/tanish303/tweniq',
+    liveUrl: 'https://tweniq.vercel.app',
   },
   {
     id: 'copywizz',
-    badge: 'PROJECT // 02',
-    index: 'SYS.COPYWIZZ.02',
-    title: 'COPYWIZZ',
-    subtitle: 'AI-Powered Desktop Assistant',
+    title: 'CopyWizz',
     description:
-      'Desktop application built with Electron and React that instantly provides AI-powered explanations for copied text with global hotkeys and toast notifications.',
-    extendedDetails:
-      'Integrates at the OS-level with auto-start on boot, global keyboard shortcuts, persistent query history, favoriting, safe-save storage, and Google Gemini API integration for instantaneous smart explanations from any active window.',
+      'A desktop assistant built with Electron and React that instantly provides AI-powered explanations for copied text. It features a global hotkey, toast-style responses, persistent query history with favoriting, safe-save storage, customizable API keys, and OS-level auto-start integration.',
+    image: '/copywizz.png',
+    video: 'https://res.cloudinary.com/dhmwi7kcd/video/upload/v1773831459/CopyWizz_tvfvop.mp4',
     technologies: ['Electron', 'React', 'Tailwind CSS', 'Node.js', 'Gemini API', 'JavaScript'],
-    metrics: [
-      { label: 'ACTIVATION', value: 'Global Hotkey' },
-      { label: 'INTEGRATION', value: 'Desktop OS' },
-      { label: 'AI ENGINE', value: 'Gemini API' },
-    ],
-  },
-  {
-    id: 'browser-vuln-analyzer',
-    badge: 'PROJECT // 03',
-    index: 'SYS.VULN.03',
-    title: 'BROWSER VULNERABILITY ANALYZER',
-    subtitle: 'Cybersecurity Analysis & Automation Tool',
-    description:
-      'Automated cybersecurity assessment tool that extracts and analyzes sensitive browser artifacts (passwords, cookies, history, bookmarks) to simulate exfiltration vectors.',
-    extendedDetails:
-      'Built to explore browser storage internals and operating system cryptographic behaviors using Python and PyCryptodome. Features automated Telegram bot integration to dispatch real-time vulnerability telemetry.',
-    technologies: ['Python', 'PyCryptodome', 'Telegram API', 'Cryptography', 'Security Automation'],
-    metrics: [
-      { label: 'ANALYSIS', value: 'Passwords & Cookies' },
-      { label: 'AUTOMATION', value: 'Telegram Bot' },
-      { label: 'CORE ENGINE', value: 'PyCryptodome' },
-    ],
+    githubUrl: 'https://github.com/tanish303/CopyWizz',
   },
 ];
 
 export const GlassProjectPanel: React.FC<GlassProjectPanelProps> = ({ uiX, uiY }) => {
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
 
-  const activeProject = PROJECTS_DATA[selectedIndex];
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedVideo(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   return (
     <>
-      {/* 1. Refined Floating Glass HUD Interface (Preserves ~80% of Mars Landscape) */}
+      {/* Centered 2-Card Horizontal Layout */}
       <div
-        className="mars-glass-panel-wrapper"
+        className="mars-centered-panel-wrapper"
         style={{
-          position: 'absolute',
-          bottom: '48px',
-          right: '48px',
-          zIndex: 20,
-          transform: `translate3d(${uiX}px, ${uiY}px, 0)`,
-          transition: 'transform 0.1s ease-out',
+          position: 'fixed',
+          left: `calc(50% + ${uiX * 0.25}px)`,
+          top: `calc(50% + ${uiY * 0.25}px)`,
+          transform: 'translate(-50%, -50%)',
+          zIndex: 25,
+          pointerEvents: 'auto',
+          width: 'min(980px, 94vw)',
         }}
       >
-        <div
-          className="mars-glass-card"
-          onMouseEnter={() => soundController.playHoverGlass()}
-        >
-          {/* Card Header & Project Switcher Tabs */}
-          <div className="mars-glass-header">
-            <div className="mars-glass-tag">
-              <span className="mars-glass-dot" />
-              <span>{activeProject.badge}</span>
-            </div>
-
-            {/* Compact Project Switcher 01 / 02 / 03 */}
-            <div className="mars-project-tabs">
-              {PROJECTS_DATA.map((p, idx) => (
+        <div className="mars-projects-grid">
+          {PROJECTS.map((project) => (
+            <div
+              key={project.id}
+              className="mars-project-card group"
+              onMouseEnter={() => soundController.playHoverGlass()}
+            >
+              {/* Card Image Banner with Play Button Overlay */}
+              <div className="mars-card-media-wrapper">
+                <img
+                  src={project.image}
+                  alt={project.title}
+                  className="mars-card-img"
+                  onError={(e) => {
+                    // graceful fallback if image is missing
+                    (e.target as HTMLElement).style.display = 'none';
+                  }}
+                />
                 <button
-                  key={p.id}
-                  className={`mars-tab-btn ${selectedIndex === idx ? 'active' : ''}`}
+                  type="button"
+                  className="mars-media-play-overlay"
                   onClick={() => {
                     soundController.playDestinationSelect();
-                    setSelectedIndex(idx);
+                    setSelectedVideo(project.video);
                   }}
-                  title={`Switch to ${p.title}`}
+                  title={`Play ${project.title} Demo Video`}
                 >
-                  0{idx + 1}
+                  <span className="mars-play-icon">▶</span>
+                  <span className="mars-play-text">Play Demo</span>
                 </button>
-              ))}
+              </div>
+
+              {/* Card Content Body */}
+              <div className="mars-card-body">
+                <h3 className="mars-card-title">{project.title}</h3>
+                <p className="mars-card-desc">{project.description}</p>
+
+                {/* Tech Stack Pills */}
+                <div className="mars-tech-pills">
+                  {project.technologies.map((tech) => (
+                    <span key={tech} className="mars-tech-pill">
+                      {tech}
+                    </span>
+                  ))}
+                </div>
+
+                {/* Card Action Buttons: Code, Live, Play Demo */}
+                <div className="mars-card-actions">
+                  <a
+                    href={project.githubUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mars-btn-outline"
+                    onClick={() => soundController.playDestinationSelect()}
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
+                      <path d="M9 18c-4.51 2-5-2-7-2" />
+                    </svg>
+                    <span>Code</span>
+                  </a>
+
+                  {project.liveUrl && (
+                    <a
+                      href={project.liveUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mars-btn-primary"
+                      onClick={() => soundController.playDestinationSelect()}
+                    >
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                        <polyline points="15 3 21 3 21 9" />
+                        <line x1="10" y1="14" x2="21" y2="3" />
+                      </svg>
+                      <span>Live</span>
+                    </a>
+                  )}
+
+                  <button
+                    type="button"
+                    className="mars-btn-demo"
+                    onClick={() => {
+                      soundController.playDestinationSelect();
+                      setSelectedVideo(project.video);
+                    }}
+                  >
+                    <span>▶ Demo</span>
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-
-          {/* Project Title & Short Description */}
-          <div className="mars-glass-body">
-            <h3 className="mars-glass-title">{activeProject.title}</h3>
-            <div className="mars-glass-subtitle">{activeProject.subtitle}</div>
-            <p className="mars-glass-desc">{activeProject.description}</p>
-          </div>
-
-          {/* Tech Stack Chips */}
-          <div className="mars-tech-pills">
-            {activeProject.technologies.slice(0, 4).map((tech, idx) => (
-              <span key={idx} className="mars-tech-pill">
-                {tech}
-              </span>
-            ))}
-          </div>
-
-          {/* Card Footer: Expand Interaction */}
-          <div className="mars-glass-footer">
-            <button
-              className="mars-expand-btn"
-              onClick={() => {
-                soundController.playDestinationSelect();
-                setIsExpanded(true);
-              }}
-            >
-              <span>EXPAND MISSION TELEMETRY</span>
-              <span className="mars-arrow">↗</span>
-            </button>
-            <span className="mars-sys-label">{activeProject.index}</span>
-          </div>
+          ))}
         </div>
       </div>
 
-      {/* 2. Expanded Project Details Modal */}
-      {isExpanded && (
+      {/* Video Modal Player matching old portfolio-website */}
+      {selectedVideo && (
         <div
-          className="mars-modal-backdrop"
-          onClick={() => setIsExpanded(false)}
+          className="mars-video-modal-backdrop"
+          onClick={() => setSelectedVideo(null)}
         >
           <div
-            className="mars-modal-card"
+            className="mars-video-modal-dialog"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mars-modal-header">
-              <div className="mars-glass-tag">
-                <span className="mars-glass-dot" />
-                <span>{activeProject.badge} • DETAILED ARCHITECTURE</span>
-              </div>
-              <button
-                className="mars-modal-close"
-                onClick={() => setIsExpanded(false)}
-              >
-                ✕
-              </button>
-            </div>
-
-            <h2 className="mars-modal-title">{activeProject.title}</h2>
-            <div className="mars-glass-subtitle">{activeProject.subtitle}</div>
-
-            <p className="mars-modal-desc">{activeProject.description}</p>
-            <p className="mars-modal-extended">{activeProject.extendedDetails}</p>
-
-            {/* Telemetry Metrics */}
-            <div className="mars-metrics-grid">
-              {activeProject.metrics.map((m, idx) => (
-                <div key={idx} className="mars-metric-box">
-                  <div className="mars-metric-label">{m.label}</div>
-                  <div className="mars-metric-val">{m.value}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Technologies */}
-            <div style={{ marginTop: '20px' }}>
-              <div className="mars-metric-label" style={{ marginBottom: '8px' }}>
-                MISSION TECHNOLOGIES
-              </div>
-              <div className="mars-tech-pills">
-                {activeProject.technologies.map((t, idx) => (
-                  <span key={idx} className="mars-tech-pill" style={{ padding: '6px 12px' }}>
-                    {t}
-                  </span>
-                ))}
-              </div>
+            <button
+              type="button"
+              className="mars-video-close-btn"
+              onClick={() => setSelectedVideo(null)}
+              title="Close Video"
+            >
+              ✕
+            </button>
+            <div className="mars-video-frame">
+              <video
+                src={selectedVideo}
+                controls
+                autoPlay
+                className="mars-video-element"
+              />
             </div>
           </div>
         </div>
@@ -212,3 +213,5 @@ export const GlassProjectPanel: React.FC<GlassProjectPanelProps> = ({ uiX, uiY }
     </>
   );
 };
+
+export default GlassProjectPanel;

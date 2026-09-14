@@ -4,6 +4,12 @@ import { usePlanetParallax } from './PlanetParallax';
 import { PlanetImageWorld } from './PlanetImageWorld';
 import { PlanetAtmosphere } from './PlanetAtmosphere';
 import { PlanetGlassPanel } from './PlanetGlassPanel';
+import { MercurySkillsPanel } from '../mercury/MercurySkillsPanel';
+import { EarthExperiencePanel } from '../earth/EarthExperiencePanel';
+import { VenusExperiencePanel } from '../venus/VenusExperiencePanel';
+import { JupiterEducationPanel } from '../jupiter/JupiterEducationPanel';
+import { SaturnGuestbookPanel } from '../saturn/SaturnGuestbookPanel';
+import { UranusConnectPanel } from '../uranus/UranusConnectPanel';
 import { soundController } from '../../../audio/SoundController';
 
 interface PlanetEnvironmentProps {
@@ -22,6 +28,25 @@ export const PlanetEnvironment: React.FC<PlanetEnvironmentProps> = ({ config, on
     }, 150);
     return () => clearTimeout(timer);
   }, [config.id]);
+
+  const renderPlanetPanel = () => {
+    switch (config.id) {
+      case 'skills':
+        return <MercurySkillsPanel config={config} uiX={parallax.uiX} uiY={parallax.uiY} />;
+      case 'earth':
+        return <EarthExperiencePanel uiX={parallax.uiX} uiY={parallax.uiY} />;
+      case 'experience':
+        return <VenusExperiencePanel uiX={parallax.uiX} uiY={parallax.uiY} />;
+      case 'education':
+        return <JupiterEducationPanel uiX={parallax.uiX} uiY={parallax.uiY} />;
+      case 'guestbook':
+        return <SaturnGuestbookPanel uiX={parallax.uiX} uiY={parallax.uiY} />;
+      case 'contact':
+        return <UranusConnectPanel uiX={parallax.uiX} uiY={parallax.uiY} />;
+      default:
+        return <PlanetGlassPanel config={config} uiX={parallax.uiX} uiY={parallax.uiY} />;
+    }
+  };
 
   return (
     <div
@@ -53,7 +78,7 @@ export const PlanetEnvironment: React.FC<PlanetEnvironmentProps> = ({ config, on
       />
 
       {/* 3. Floating Glassmorphic Portfolio Card Interface */}
-      <PlanetGlassPanel config={config} uiX={parallax.uiX} uiY={parallax.uiY} />
+      {renderPlanetPanel()}
 
       {/* 4. Minimal Cinematic Top Surface HUD: Return to Orbit Button Only */}
       <div className="planet-surface-hud" style={{ justifyContent: 'flex-end' }}>

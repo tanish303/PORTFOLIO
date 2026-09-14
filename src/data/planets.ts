@@ -190,11 +190,11 @@ export const NEPTUNE_DATA: CelestialBodyData = {
   initialAngle: 3.7,
   rotationSpeed: 0.3,
   axialTilt: 0.49,
-  color: '#2563eb',
+  color: '#38bdf8',
   surfaceTheme: 'neptune',
   atmosphereColor: '#60a5fa',
   atmosphereScale: 1.16,
-  atmosphereOpacity: 0.45,
+  atmosphereOpacity: 0.5,
 };
 
 export const SECTION_PLANETS: CelestialBodyData[] = [
@@ -237,4 +237,72 @@ export function calculateOrbitalPosition(
   const adjustedZ = z * Math.cos(body.inclination);
 
   return [x, y, adjustedZ];
+}
+
+// Average distance from Sun in millions of km (astronomical constants)
+export const SUN_DISTANCE_KM: Record<string, number> = {
+  sun: 0,
+  skills: 57.9,         // Mercury
+  experience: 108.2,    // Venus
+  earth: 149.6,         // Earth
+  projects: 227.9,      // Mars
+  education: 778.5,     // Jupiter
+  guestbook: 1434.0,    // Saturn
+  contact: 2871.0,      // Uranus
+  askai: 4495.0,        // Neptune
+};
+
+/**
+ * Calculates logical speed in billions or millions of km/s based on the average
+ * physical distance between the departure body and destination body.
+ * For example: Earth to Neptune is ~4.35B km covered in ~2 seconds flight time -> ~2.2B km/s.
+ */
+export function getLogicalFlightSpeed(
+  fromId: string,
+  toId: string,
+  flightProgress: number
+): string {
+  const d1 = SUN_DISTANCE_KM[fromId] ?? 149.6;
+  const d2 = SUN_DISTANCE_KM[toId] ?? 227.9;
+  // Constant average distance between planetary orbits in million km
+  const distMillionKm = Math.max(50, Math.abs(d1 - d2) || 78);
+  
+  // Total flight duration is approximately 2.5 seconds total
+  // Acceleration / cruise / braking factor gives dynamic feel
+  const curve = Math.sin(Math.PI * Math.max(0.05, Math.min(0.95, flightProgress)));
+  const speedMillionKmS = (distMillionKm / 2.2) * (0.8 + curve * 0.4);
+
+  if (speedMillionKmS >= 1000) {
+    return `${(speedMillionKmS / 1000).toFixed(2)} billion km/s`;
+  }
+  return `${Math.round(speedMillionKmS)} million km/s`;
+}
+
+/**
+ * Maps a body ID to its semantic location format:
+ * e.g. earth -> 'home/earth', projects -> 'projects/mars', skills -> 'skills/mercury'
+ */
+export function getSectorPath(bodyId: string): string {
+  switch (bodyId) {
+    case 'earth':
+      return 'home/earth';
+    case 'projects':
+      return 'projects/mars';
+    case 'skills':
+      return 'skills/mercury';
+    case 'experience':
+      return 'experience/venus';
+    case 'education':
+      return 'education/jupiter';
+    case 'guestbook':
+      return 'guestbook/saturn';
+    case 'contact':
+      return 'contact/uranus';
+    case 'askai':
+      return 'askai/neptune';
+    case 'sun':
+      return 'core/sun';
+    default:
+      return `sector/${bodyId}`;
+  }
 }

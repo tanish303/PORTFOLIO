@@ -75,14 +75,14 @@ export const SpaceBackground: React.FC = () => {
     return { glowingPositions: positions, glowingColors: colors };
   }, []);
 
-  // Primary Starfield: 3,500 natural round stars with subtle color temp variation
+  // Primary Starfield: 7,000 natural round stars with subtle color temp variation
   const { starPositions, starColors } = useMemo(() => {
-    const count = 3500;
+    const count = 7000;
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
 
     for (let i = 0; i < count; i++) {
-      const r = 320 + Math.random() * 280;
+      const r = 300 + Math.random() * 320;
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
 
@@ -113,10 +113,10 @@ export const SpaceBackground: React.FC = () => {
 
   // Distant Micro Star Cluster (Faint deep space background layer)
   const distantPositions = useMemo(() => {
-    const count = 2500;
+    const count = 5500;
     const positions = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
-      const r = 550 + Math.random() * 200;
+      const r = 500 + Math.random() * 260;
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
       positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Volume2, VolumeX, Eye, Home, AlertTriangle } from 'lucide-react';
+import { Volume2, VolumeX, AlertTriangle } from 'lucide-react';
 import { soundController } from '../../audio/SoundController';
 import type { CelestialBodyData, FlightPhase, FlightStatus } from '../../types/solar';
+import { getLogicalFlightSpeed, getSectorPath } from '../../data/planets';
 import { PlanetDock } from './PlanetDock';
 
 interface HUDProps {
@@ -25,15 +26,9 @@ export const HUD: React.FC<HUDProps> = ({
   targetBody,
   flightStatus,
   flightPhase = 'IDLE',
-  discoveredIds,
-  totalPlanets,
   flightProgress,
-  currentSpeedKmS,
-  isOverview,
   allBodies,
   onSelectDestination,
-  onReturnHome,
-  onToggleOverview,
 }) => {
   const [isMuted, setIsMuted] = useState(soundController.getMuted());
 
@@ -52,63 +47,23 @@ export const HUD: React.FC<HUDProps> = ({
     flightStatus === 'SUPERNOVA_EXPLODING' ||
     flightStatus === 'SUPERNOVA_RESETTING';
 
+  // Compute realistic/logical speed based on planetary astronomical distances
+  const logicalSpeedDisplay = isFlying && targetBody
+    ? getLogicalFlightSpeed(currentBody.id, targetBody.id, flightProgress)
+    : null;
+
   return (
     <div className="hud-overlay">
-      {/* Top Bar: Mission Control Header & Status */}
+      {/* Top Bar: Clean Header & Audio Toggle */}
       <div className="hud-top-bar">
+        {/* Top Left: Clean TANISH / PORTFOLIO branding */}
         <div className="hud-title-block">
-          <div className="hud-brand">
-            <span>TANIS</span>
-            <span className="hud-brand-tag">MISSION CONTROL</span>
-          </div>
-          <div className="hud-subbrand">
-            SOLAR SYSTEM PORTFOLIO // 8 ORBITAL SECTORS
-          </div>
+          <div className="hud-clean-name">TANISH</div>
+          <div className="hud-clean-portfolio">PORTFOLIO</div>
         </div>
 
-        {/* Mission Status Indicator */}
-        <div className="hud-mission-status">
-          <div
-            className={`mission-indicator-dot ${
-              isSunTarget ? 'danger' : isFlying ? 'burn' : ''
-            }`}
-          />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            <span style={{ fontSize: '9px', letterSpacing: '1.5px', color: '#64748b' }}>
-              TRAJECTORY STATUS
-            </span>
-            <span
-              style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: '12px',
-                fontWeight: 700,
-                letterSpacing: '1px',
-                color: isSunTarget ? '#ff4444' : isFlying ? '#ffaa00' : '#00f0ff',
-              }}
-            >
-              {isOverview && !isFlying && 'SYSTEM OVERVIEW // ALL 8 PLANETS ACTIVE'}
-              {!isOverview && flightPhase === 'IDLE' && `DOCKED // ${currentBody.name.toUpperCase()}`}
-              {flightPhase === 'FOCUS_DEPARTURE' && `DESTINATION LOCKED // FOCUSING DEPARTURE: ${currentBody.label}`}
-              {flightPhase === 'HOLD_DEPARTURE' && `PRE-LAUNCH SEQUENCE // ${currentBody.label} LAUNCH PAD`}
-              {flightPhase === 'VERTICAL_ASCENT' && `VERTICAL ASCENT // CLEARING ATMOSPHERE`}
-              {flightPhase === 'TRANSITION_TURN' && `TRAJECTORY ALIGNMENT // VECTOR LOCKED`}
-              {flightPhase === 'DIRECT_CRUISE' && (isSunTarget ? 'CRITICAL SOLAR DESCENT' : `DIRECT CRUISE INTERCEPT // ${targetBody?.label} [${Math.round(flightProgress * 100)}%]`)}
-              {flightPhase === 'APPROACH_DOCK' && `BRAKING & INSERTION // ${targetBody?.label}`}
-              {flightStatus === 'SUPERNOVA_EXPLODING' && 'SUPERNOVA DETONATION'}
-              {flightStatus === 'SUPERNOVA_RESETTING' && 'QUANTUM RECONSTRUCTION'}
-            </span>
-          </div>
-        </div>
-
-        {/* Worlds Discovered & Sound Toggle */}
+        {/* Audio Mute/Unmute Toggle */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div className="hud-discovery-box">
-            <span className="hud-discovery-label">Worlds Explored</span>
-            <span className="hud-discovery-count">
-              {discoveredIds.size} / {totalPlanets}
-            </span>
-          </div>
-
           <button
             className="hud-btn hud-interactive"
             onClick={handleToggleSound}
@@ -128,26 +83,46 @@ export const HUD: React.FC<HUDProps> = ({
         </div>
       )}
 
-      {/* Bottom Area: Planet Quick-Dock & Telemetry */}
+      {/* Bottom Area: Telemetry, Navigation Dock & Non-clickable Instruction Banner */}
       <div className="hud-bottom-bar">
-        {/* Telemetry Card */}
+        {/* Telemetry Card: Shows location, destination while travelling, and speed only while flying */}
         <div className="hud-telemetry-card">
-          <div className="telemetry-row">
+          <div className="telemetry-col">
             <span className="telemetry-label">CURRENT LOCATION</span>
-            <span className="telemetry-val highlight">{currentBody.label}</span>
-          </div>
-          <div className="telemetry-row">
-            <span className="telemetry-label">DESTINATION</span>
-            <span className="telemetry-val">
-              {targetBody ? targetBody.label : 'STANDBY // READY'}
+            <span className="telemetry-val highlight telemetry-location-val">
+              {getSectorPath(currentBody.id).toUpperCase()}
             </span>
           </div>
-          <div className="telemetry-row">
-            <span className="telemetry-label">VELOCITY</span>
-            <span className="telemetry-val highlight">
-              {isFlying ? `${currentSpeedKmS.toFixed(1)} km/s` : 'ORBITAL 7.8 km/s'}
-            </span>
-          </div>
+
+          {/* Destination displayed ONLY when travelling to a planet */}
+          {isFlying && targetBody && (
+            <div className="telemetry-col" style={{ marginTop: '8px' }}>
+              <span className="telemetry-label">DESTINATION</span>
+              <span className="telemetry-val highlight telemetry-destination-val">
+                {(() => {
+                  if (targetBody.id === 'sun') return 'Solar Core';
+                  if (targetBody.id === 'earth') return 'Home';
+                  if (targetBody.id === 'askai') return 'Ask AI';
+                  return targetBody.label
+                    .toLowerCase()
+                    .split(' ')
+                    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' ');
+                })()}
+              </span>
+            </div>
+          )}
+
+          {/* Velocity displayed ONLY when the rocket is flying */}
+          {isFlying && logicalSpeedDisplay && (
+            <div className="telemetry-col" style={{ marginTop: '8px' }}>
+              <span className="telemetry-label">SPEED</span>
+              <span className="telemetry-val highlight">
+                {logicalSpeedDisplay}
+              </span>
+            </div>
+          )}
+
           {isFlying && (
             <div style={{ width: '100%', marginTop: '4px' }}>
               <div
@@ -181,27 +156,12 @@ export const HUD: React.FC<HUDProps> = ({
           onSelectDestination={onSelectDestination}
         />
 
-        {/* Camera Perspective Controls */}
-        <div className="hud-nav-buttons hud-interactive">
-          <button
-            className={`hud-btn ${isOverview ? 'primary' : ''}`}
-            onClick={onToggleOverview}
-            title="Toggle between full Solar System Overview and close Planet Inspection"
-          >
-            <Eye size={14} />
-            <span>{isOverview ? 'SYSTEM OVERVIEW' : 'INSPECT ORBIT'}</span>
-          </button>
-
-          {currentBody.id !== 'earth' && (
-            <button
-              className="hud-btn home-btn"
-              onClick={onReturnHome}
-              disabled={isFlying}
-            >
-              <Home size={14} />
-              <span>RETURN HOME</span>
-            </button>
-          )}
+        {/* Right Bottom Corner: Non-clickable instructional banner replacing the button */}
+        <div className="hud-instruction-banner">
+          <span className="hud-instruction-icon">✦</span>
+          <span className="hud-instruction-text">
+            Click on any planet in the solar system to visit
+          </span>
         </div>
       </div>
 

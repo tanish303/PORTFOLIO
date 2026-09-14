@@ -46,8 +46,8 @@ export const CameraController: React.FC<CameraControllerProps> = ({
   const turnStartLookAt = useRef(new THREE.Vector3());
   const prevFlightPhase = useRef<FlightPhase>('IDLE');
 
-  // Overview spherical orbit state
-  const overviewAngles = useRef({ theta: 0.2, phi: 0.65, distance: 225 });
+  // Overview spherical orbit state: framed high with ample bottom gap clear of the HUD
+  const overviewAngles = useRef({ theta: 0.18, phi: 0.75, distance: 365 });
 
   // Planet local orbit state
   const isDragging = useRef(false);
@@ -63,11 +63,11 @@ export const CameraController: React.FC<CameraControllerProps> = ({
     localAngles.current.distance = idealDistance;
   }, [idealDistance]);
 
-  // Initial setup: start framed on the whole solar system in a single frame!
+  // Initial setup: start framed on the whole solar system with generous bottom clearance
   useEffect(() => {
-    camera.position.set(0, 145, 175);
-    currentLookAt.current.set(0, -4, 0);
-    camera.lookAt(0, -4, 0);
+    camera.position.set(0, 160, 195);
+    currentLookAt.current.set(0, -18, -8);
+    camera.lookAt(0, -18, -8);
   }, [camera]);
 
   // Mouse & touch drag listeners
@@ -118,7 +118,7 @@ export const CameraController: React.FC<CameraControllerProps> = ({
         overviewAngles.current.distance = THREE.MathUtils.clamp(
           overviewAngles.current.distance + e.deltaY * 0.08,
           90,
-          340
+          500
         );
       } else {
         const minD = idealDistance * 0.45;
@@ -283,7 +283,7 @@ export const CameraController: React.FC<CameraControllerProps> = ({
       const camZ = distance * cosPhi * Math.cos(theta) + driftZ;
 
       targetCamPos.current.set(camX, camY, camZ);
-      targetLookAt.current.set(0, -3, 0);
+      targetLookAt.current.set(0, -18, -8);
 
       if ((camera as THREE.PerspectiveCamera).fov) {
         const pCam = camera as THREE.PerspectiveCamera;

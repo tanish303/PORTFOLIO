@@ -45,10 +45,12 @@ export const Planet: React.FC<PlanetProps> = ({
 
   const orbitLine = useMemo(() => {
     const geom = new THREE.BufferGeometry().setFromPoints(orbitPoints);
+    // Outer distant orbits (like Neptune at r=162) need stronger minimum opacity to stay crisp against dark space
+    const baseOpacity = data.id === 'askai' ? 0.32 : Math.max(0.16, 0.12 + data.orbitRadius * 0.001);
     const mat = new THREE.LineBasicMaterial({
       color: data.color,
       transparent: true,
-      opacity: hovered || isSelected ? 0.45 : 0.12,
+      opacity: hovered || isSelected ? 0.65 : baseOpacity,
       blending: THREE.AdditiveBlending,
       depthTest: true,
       depthWrite: false,
@@ -56,7 +58,7 @@ export const Planet: React.FC<PlanetProps> = ({
     const line = new THREE.Line(geom, mat);
     line.renderOrder = 0;
     return line;
-  }, [orbitPoints, data.color, hovered, isSelected]);
+  }, [orbitPoints, data.color, data.id, data.orbitRadius, hovered, isSelected]);
 
   useFrame((_, delta) => {
     // Current orbital position
@@ -82,14 +84,14 @@ export const Planet: React.FC<PlanetProps> = ({
   // Elevated label height ensuring it sits comfortably above rings and large atmospheres
   const labelHeight = useMemo(() => {
     if (data.rings) {
-      return data.rings.outerRadius + 2.6;
+      return data.rings.outerRadius + 3.8;
     }
-    return data.radius + 3.2;
+    return data.radius + 3.8;
   }, [data.rings, data.radius]);
 
-  // Adaptive distance factor scaled for distant outer planets so headings remain large and clearly legible
+  // Adaptive distance factor scaled for distant outer planets so headings remain prominently large and clearly legible
   const labelDistanceFactor = useMemo(() => {
-    return Math.max(90, Math.min(145, 76 + data.orbitRadius * 0.45));
+    return Math.max(105, Math.min(185, 90 + data.orbitRadius * 0.65));
   }, [data.orbitRadius]);
 
   const ringTexture = useMemo(() => {
@@ -220,18 +222,35 @@ export const Planet: React.FC<PlanetProps> = ({
         >
           {isCurrentLocation ? (
             <div
-              className="earth-here-marker"
+              className="planet-label-container"
               onClick={(e) => {
                 e.stopPropagation();
                 onSelect(data.id);
               }}
               style={{ pointerEvents: 'auto', cursor: 'pointer' }}
             >
-              <div className="earth-here-badge">
-                <span style={{ fontSize: '12px' }}>⌖</span>
-                <span>YOU ARE HERE</span>
+              <div
+                className="planet-label-badge active"
+                style={{
+                  borderColor: '#00ffaa',
+                  background: 'rgba(0, 255, 170, 0.22)',
+                  boxShadow: '0 0 20px rgba(0, 255, 170, 0.6)',
+                }}
+              >
+                <div
+                  className="planet-label-dot"
+                  style={{ background: '#00ffaa', boxShadow: '0 0 8px #00ffaa' }}
+                />
+                <span className="planet-label-text" style={{ color: '#a7f3d0' }}>
+                  YOU ARE HERE
+                </span>
               </div>
-              <div className="earth-here-arrow">▼</div>
+              <div
+                className="planet-label-stem"
+                style={{
+                  background: 'linear-gradient(to bottom, #00ffaa, transparent)',
+                }}
+              />
             </div>
           ) : (
             <div

@@ -173,7 +173,9 @@ export function App() {
   // Inside-Planet Planetary Experience State
   const [activeExperience, setActiveExperience] = useState<string | null>(null);
   const [transitionBodyId, setTransitionBodyId] = useState<string>('projects');
-  const [isAtmosphereTransition, setIsAtmosphereTransition] = useState<boolean>(false);
+  // Continuous Cinematic Entry Flow: 'idle' | 'entering' | 'skipping_clouds' | 'clearing'
+  const [atmosphereFlowPhase, setAtmosphereFlowPhase] = useState<'idle' | 'entering' | 'skipping_clouds' | 'clearing'>('idle');
+  const atmosphereFlowRef = useRef<'idle' | 'entering' | 'skipping_clouds' | 'clearing'>('idle');
 
   // Flight Physics & Telemetry State
   const [flightProgress, setFlightProgress] = useState(0);
@@ -248,17 +250,25 @@ export function App() {
           );
           return;
         } else {
-          // 2. Outside planet: enter directly inside with a short cloud animation!
+          // 2. Outside planet: enter directly inside with smooth continuous flow!
           if (currentBody.id !== 'sun') {
             setTransitionBodyId(currentBody.id);
-            setIsAtmosphereTransition(true);
+            atmosphereFlowRef.current = 'entering';
+            setAtmosphereFlowPhase('entering');
             soundController.playAtmosphericEntry();
             setTimeout(() => {
-              setActiveExperience(currentBody.id);
-            }, 550);
+              atmosphereFlowRef.current = 'skipping_clouds';
+              setAtmosphereFlowPhase('skipping_clouds');
+            }, 250);
             setTimeout(() => {
-              setIsAtmosphereTransition(false);
-            }, 1300);
+              setActiveExperience(currentBody.id);
+              atmosphereFlowRef.current = 'clearing';
+              setAtmosphereFlowPhase('clearing');
+            }, 600);
+            setTimeout(() => {
+              atmosphereFlowRef.current = 'idle';
+              setAtmosphereFlowPhase('idle');
+            }, 1250);
           }
           return;
         }
@@ -332,30 +342,20 @@ export function App() {
 
   // Return to Orbit from Surface Experience (returns to full System Overview)
   const handleReturnToOrbit = useCallback(() => {
-    setIsAtmosphereTransition(true);
+    atmosphereFlowRef.current = 'skipping_clouds';
+    setAtmosphereFlowPhase('skipping_clouds');
     soundController.playAtmosphericEntry();
     setTimeout(() => {
       setActiveExperience(null);
       setIsOverview(true); // Return to full system overview
-    }, 550);
+      atmosphereFlowRef.current = 'clearing';
+      setAtmosphereFlowPhase('clearing');
+    }, 450);
     setTimeout(() => {
-      setIsAtmosphereTransition(false);
-    }, 1300);
+      atmosphereFlowRef.current = 'idle';
+      setAtmosphereFlowPhase('idle');
+    }, 1050);
   }, []);
-
-  // Re-enter Surface when parked on current planet
-  const handleEnterCurrentSurface = useCallback(() => {
-    if (activeExperience || flightPhase !== 'IDLE' || currentBody.id === 'sun') return;
-    setTransitionBodyId(currentBody.id);
-    setIsAtmosphereTransition(true);
-    soundController.playAtmosphericEntry();
-    setTimeout(() => {
-      setActiveExperience(currentBody.id);
-    }, 750);
-    setTimeout(() => {
-      setIsAtmosphereTransition(false);
-    }, 2100);
-  }, [activeExperience, flightPhase, currentBody.id]);
 
   // Physics & Animation Loop Frame Callback
   const handleFrameUpdate = useCallback(
@@ -541,7 +541,7 @@ export function App() {
             rocketSimPos.current.addScaledVector(velocity, dt);
             currentSpeed = cruiseSpeed;
 
-            if (distToTarget <= targetBody.radius + 6.0) {
+            if (distToTarget <= targetBody.radius + 8.5) {
               setFlightPhase('APPROACH_DOCK');
               phaseStartTime.current = now;
               setFlightStatus('BRAKING');
@@ -550,7 +550,7 @@ export function App() {
           }
 
           case 'APPROACH_DOCK': {
-            // Final approach: decelerate and touch destination surface
+            // Final approach: decelerate and plunge into destination atmosphere
             const toTarget = liveTarget.clone().sub(rocketSimPos.current);
             const distToTarget = toTarget.length();
             const approachDir = toTarget.clone().normalize();
@@ -558,11 +558,28 @@ export function App() {
             const surfaceContactDist = targetBody.radius + 0.2;
             const remaining = distToTarget - surfaceContactDist;
 
-            // Robust touchdown condition: planet is orbiting continuously, so threshold accounts for orbital displacement
-            const isTouchdown = remaining <= 0.45 || distToTarget <= surfaceContactDist + 0.35 || tInPhase > 1.6;
+            // Step 1: Rocket entering planet atmosphere (wisps, hypersonic speed lines, plasma entry glow)
+            if (remaining <= 5.8 && targetBody.id !== 'sun') {
+              if (atmosphereFlowRef.current === 'idle') {
+                atmosphereFlowRef.current = 'entering';
+                setAtmosphereFlowPhase('entering');
+                setTransitionBodyId(targetBody.id);
+                soundController.playAtmosphericEntry();
+              }
+            }
+
+            // Step 2: Plunging through cloud strata ("skipping clouds" at supersonic speed)
+            if (remaining <= 2.8 && targetBody.id !== 'sun') {
+              if (atmosphereFlowRef.current === 'entering') {
+                atmosphereFlowRef.current = 'skipping_clouds';
+                setAtmosphereFlowPhase('skipping_clouds');
+              }
+            }
+
+            // Touchdown condition: rocket physically meets destination surface
+            const isTouchdown = remaining <= 0.45 || distToTarget <= surfaceContactDist + 0.35 || tInPhase > 1.8;
 
             if (isTouchdown) {
-              // Rocket physically touches the destination planet surface — end flight immediately
               let outwardNormal = rocketSimPos.current.clone().sub(liveTarget);
               if (outwardNormal.lengthSq() < 0.01) {
                 outwardNormal = new THREE.Vector3(0, 1, 0);
@@ -595,26 +612,25 @@ export function App() {
                   return next;
                 });
 
-                // Initiate cinematic atmospheric descent to destination planet
-                setTransitionBodyId(reachedBodyId);
-                setIsAtmosphereTransition(true);
-                soundController.playAtmosphericEntry();
+                // Step 3: Seamless surface emergence!
+                // Mount experience immediately underneath the parting clouds
+                setActiveExperience(reachedBodyId);
+                atmosphereFlowRef.current = 'clearing';
+                setAtmosphereFlowPhase('clearing');
 
+                // Clouds finish parting outward, leaving surface experience crystal clear
                 setTimeout(() => {
-                  setActiveExperience(reachedBodyId);
-                }, 550);
-
-                setTimeout(() => {
-                  setIsAtmosphereTransition(false);
-                }, 1300);
+                  atmosphereFlowRef.current = 'idle';
+                  setAtmosphereFlowPhase('idle');
+                }, 750);
               }
 
               setFlightProgress(1.0);
               setPhaseProgress(1.0);
               setCurrentSpeedKmS(7.8);
             } else {
-              // Smooth deceleration towards surface with guaranteed closing speed against orbiting body
-              const approachSpeed = THREE.MathUtils.clamp(remaining * 6.0 + 10.0, 15.0, 52.0);
+              // Smooth deceleration towards surface with closing speed against orbiting body
+              const approachSpeed = THREE.MathUtils.clamp(remaining * 5.2 + 8.0, 14.0, 48.0);
               const velocity = approachDir.clone().multiplyScalar(approachSpeed);
               rocketSimVel.current.copy(velocity);
               rocketSimPos.current.addScaledVector(velocity, dt);
@@ -660,7 +676,7 @@ export function App() {
       {/* 3D WebGL Canvas */}
       <div className="canvas-container">
         <Canvas
-          camera={{ position: [0, 145, 175], fov: 45, near: 0.1, far: 2000 }}
+          camera={{ position: [0, 160, 195], fov: 45, near: 0.1, far: 2000 }}
           gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
         >
           <UniverseScene
@@ -717,24 +733,31 @@ export function App() {
         </div>
       )}
 
-      {/* Cinematic Atmospheric Cloud Transition (Pure Clouds, NO Text Screens) */}
-      {(() => {
+      {/* Cinematic Continuous Atmospheric Flow Transition (Rocket -> Clouds Rush -> Visible Screens) */}
+      {atmosphereFlowPhase !== 'idle' && (() => {
         const isMars = transitionBodyId === 'projects';
         const planetConfig = PLANET_ENVIRONMENTS[transitionBodyId];
         const themeRgb = isMars ? '239, 68, 68' : planetConfig?.themeColorRgb || '56, 189, 248';
 
         return (
           <div
-            className="atmospheric-clouds-overlay"
+            className={`atmospheric-flow-overlay phase-${atmosphereFlowPhase}`}
             style={{
-              opacity: isAtmosphereTransition ? 1 : 0,
-              pointerEvents: isAtmosphereTransition ? 'auto' : 'none',
               ['--cloud-rgb' as string]: themeRgb,
             }}
           >
-            <div className="cloud-haze-sweep" />
-            <div className="cloud-layer cloud-layer-1" />
-            <div className="cloud-layer cloud-layer-2" />
+            {/* Hypersonic speed lines & entry plasma wisps */}
+            <div className="flow-speed-streaks" />
+
+            {/* Glowing outer atmospheric envelope */}
+            <div className="flow-entry-glow" />
+
+            {/* Volumetric high-speed cloud decks */}
+            <div className="flow-cloud-deck flow-cloud-deck-1" />
+            <div className="flow-cloud-deck flow-cloud-deck-2" />
+
+            {/* Atmospheric haze sweep */}
+            <div className="flow-haze-sweep" />
           </div>
         );
       })()}
@@ -753,7 +776,7 @@ export function App() {
         </div>
       )}
 
-      {/* Futuristic Sci-Fi Mission Control HUD (Active only when in orbit) */}
+      {/* Sci-Fi Mission Control HUD (Active only when in orbit) */}
       {!activeExperience && (
         <HUD
           currentBody={currentBody}
@@ -770,42 +793,6 @@ export function App() {
           onReturnHome={handleReturnHome}
           onToggleOverview={handleToggleOverview}
         />
-      )}
-
-      {/* Quick Surface Descent button if parked at any planet in orbit */}
-      {currentBody.id !== 'sun' && !activeExperience && flightPhase === 'IDLE' && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '95px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 35,
-          }}
-        >
-          <button
-            onClick={handleEnterCurrentSurface}
-            className="mars-return-btn"
-            style={{
-              borderColor:
-                currentBody.id === 'projects'
-                  ? '#ef4444'
-                  : PLANET_ENVIRONMENTS[currentBody.id]?.themeColor || '#38bdf8',
-              background: 'rgba(12, 12, 20, 0.85)',
-              boxShadow: `0 0 25px rgba(${
-                currentBody.id === 'projects'
-                  ? '239, 68, 68'
-                  : PLANET_ENVIRONMENTS[currentBody.id]?.themeColorRgb || '56, 189, 248'
-              }, 0.5)`,
-            }}
-          >
-            <span>
-              {currentBody.id === 'projects'
-                ? '🔴 DESCEND TO MARS SURFACE // PROJECTS'
-                : `🪐 DESCEND TO ${currentBody.name.toUpperCase()} SURFACE`}
-            </span>
-          </button>
-        </div>
       )}
     </div>
   );

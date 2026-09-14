@@ -144,12 +144,6 @@ export const Sun: React.FC<SunProps> = ({ onSelect, isSelected, isExploding }) =
             <span className="planet-label-text" style={{ color: '#fff' }}>
               SUN
             </span>
-            <span
-              className="planet-label-subtext"
-              style={{ color: '#ffb300' }}
-            >
-              [SOLAR CORE]
-            </span>
           </div>
           <div
             className="planet-label-stem"

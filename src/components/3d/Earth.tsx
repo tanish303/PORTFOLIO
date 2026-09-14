@@ -154,25 +154,42 @@ export const Earth: React.FC<EarthProps> = ({
 
         {/* YOU ARE HERE Marker or Planet Label */}
         <Html
-          position={[0, EARTH_DATA.radius + 3.2, 0]}
+          position={[0, EARTH_DATA.radius + 3.8, 0]}
           center
-          distanceFactor={95}
+          distanceFactor={120}
           zIndexRange={[100, 0]}
         >
           {isCurrentLocation ? (
             <div
-              className="earth-here-marker"
+              className="planet-label-container"
               onClick={(e) => {
                 e.stopPropagation();
                 onSelect(EARTH_DATA.id);
               }}
               style={{ pointerEvents: 'auto', cursor: 'pointer' }}
             >
-              <div className="earth-here-badge">
-                <span style={{ fontSize: '12px' }}>⌖</span>
-                <span>YOU ARE HERE</span>
+              <div
+                className="planet-label-badge active"
+                style={{
+                  borderColor: '#00ffaa',
+                  background: 'rgba(0, 255, 170, 0.22)',
+                  boxShadow: '0 0 20px rgba(0, 255, 170, 0.6)',
+                }}
+              >
+                <div
+                  className="planet-label-dot"
+                  style={{ background: '#00ffaa', boxShadow: '0 0 8px #00ffaa' }}
+                />
+                <span className="planet-label-text" style={{ color: '#a7f3d0' }}>
+                  YOU ARE HERE
+                </span>
               </div>
-              <div className="earth-here-arrow">▼</div>
+              <div
+                className="planet-label-stem"
+                style={{
+                  background: 'linear-gradient(to bottom, #00ffaa, transparent)',
+                }}
+              />
             </div>
           ) : (
             <div
@@ -198,12 +215,6 @@ export const Earth: React.FC<EarthProps> = ({
                   style={{ background: '#00ffaa', boxShadow: '0 0 8px #00ffaa' }}
                 />
                 <span className="planet-label-text">EARTH</span>
-                <span
-                  className="planet-label-subtext"
-                  style={{ color: '#a7f3d0' }}
-                >
-                  [RETURN BASE]
-                </span>
               </div>
               <div
                 className="planet-label-stem"
