@@ -58,12 +58,16 @@ const UniverseScene: React.FC<UniverseSceneProps> = ({
   onFrameUpdate,
 }) => {
   const [elapsedTime, setElapsedTime] = useState(0);
+  const lastStateUpdate = useRef(0);
   const rocketWorldPos = useRef(new THREE.Vector3(...currentRocketPos));
   const rocketWorldDir = useRef(new THREE.Vector3(0, 1, 0));
 
   useFrame((state, delta) => {
     const t = state.clock.getElapsedTime();
-    setElapsedTime(t);
+    if (t - lastStateUpdate.current > 0.04) {
+      lastStateUpdate.current = t;
+      setElapsedTime(t);
+    }
     onFrameUpdate(t, delta);
   });
 
@@ -676,6 +680,8 @@ export function App() {
       {/* 3D WebGL Canvas */}
       <div className="canvas-container">
         <Canvas
+          frameloop={activeExperience ? 'never' : 'always'}
+          dpr={[1, 1.5]}
           camera={{ position: [0, 160, 195], fov: 45, near: 0.1, far: 2000 }}
           gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
         >

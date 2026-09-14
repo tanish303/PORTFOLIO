@@ -23,18 +23,18 @@ export const PlanetAtmosphere: React.FC<PlanetAtmosphereProps> = ({
         overflow: 'hidden',
       }}
     >
-      {/* 1. Cinematic Lens Falloff / Vignette */}
+      {/* 1. Cinematic Lens Falloff / Soft Vignette (Ultra-clear, lets landscape shine through) */}
       <div
         style={{
           position: 'absolute',
           inset: 0,
-          background: `radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0) 45%, rgba(0, 0, 0, 0.45) 85%, rgba(0, 0, 0, 0.78) 100%)`,
+          background: `radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0) 65%, rgba(0, 0, 0, 0.15) 88%, rgba(0, 0, 0, 0.32) 100%)`,
         }}
       />
 
       {/* 2. Planet-Specific Atmospheric Overlays */}
 
-      {/* MERCURY: Barren rocky surface, NO atmosphere. Stark sunlight corona, intense thermal solar radiation glow, zero dust or haze */}
+      {/* MERCURY: Barren rocky surface, NO atmosphere. Stark sunlight corona, intense thermal solar radiation glow */}
       {atmosphereType === 'mercury' && (
         <>
           {/* Intense solar corona flare towards the huge glowing sun in the upper center/left */}
@@ -56,28 +56,28 @@ export const PlanetAtmosphere: React.FC<PlanetAtmosphereProps> = ({
               bottom: 0,
               left: 0,
               right: 0,
-              height: '35%',
+              height: '25%',
               background:
-                'linear-gradient(0deg, rgba(20, 20, 25, 0.45) 0%, rgba(30, 30, 40, 0.15) 50%, transparent 100%)',
+                'linear-gradient(0deg, rgba(20, 20, 25, 0.25) 0%, rgba(30, 30, 40, 0.08) 50%, transparent 100%)',
             }}
           />
         </>
       )}
 
-      {/* VENUS: Dense yellow/orange atmospheric haze and slow cloud movement */}
+      {/* VENUS: Golden atmospheric glow and slow cloud movement (Clear, unmurky) */}
       {atmosphereType === 'venus' && (
         <>
-          {/* Dense sulfuric yellow/orange haze */}
+          {/* Subtle golden warm ambient glow */}
           <div
             style={{
               position: 'absolute',
               inset: 0,
               background:
-                'radial-gradient(circle at 50% 30%, rgba(254, 240, 138, 0.18) 0%, rgba(234, 179, 8, 0.25) 45%, rgba(161, 98, 7, 0.38) 100%)',
-              mixBlendMode: 'color',
+                'radial-gradient(circle at 50% 30%, rgba(254, 240, 138, 0.12) 0%, rgba(234, 179, 8, 0.14) 45%, rgba(161, 98, 7, 0.16) 100%)',
+              mixBlendMode: 'screen',
             }}
           />
-          {/* Slowly drifting dense sulfur cloud haze */}
+          {/* Slowly drifting sulfur cloud sheen */}
           <div
             className="venus-cloud-layer-1"
             style={{
@@ -87,7 +87,7 @@ export const PlanetAtmosphere: React.FC<PlanetAtmosphereProps> = ({
               width: '140%',
               height: '130%',
               background:
-                'radial-gradient(ellipse at 35% 40%, rgba(250, 204, 21, 0.14) 0%, rgba(202, 138, 4, 0.08) 50%, transparent 80%)',
+                'radial-gradient(ellipse at 35% 40%, rgba(250, 204, 21, 0.1) 0%, rgba(202, 138, 4, 0.05) 50%, transparent 80%)',
               transform: `translate3d(${parallaxX * 0.4}px, ${parallaxY * 0.25}px, 0)`,
               mixBlendMode: 'screen',
             }}
@@ -99,9 +99,9 @@ export const PlanetAtmosphere: React.FC<PlanetAtmosphereProps> = ({
               bottom: '10%',
               left: '-10%',
               right: '-10%',
-              height: '50%',
+              height: '35%',
               background:
-                'linear-gradient(180deg, transparent 0%, rgba(217, 119, 6, 0.12) 40%, rgba(180, 83, 9, 0.22) 100%)',
+                'linear-gradient(180deg, transparent 0%, rgba(217, 119, 6, 0.06) 40%, rgba(180, 83, 9, 0.12) 100%)',
               mixBlendMode: 'screen',
             }}
           />
@@ -121,7 +121,7 @@ export const PlanetAtmosphere: React.FC<PlanetAtmosphereProps> = ({
               width: '130%',
               height: '70%',
               background:
-                'linear-gradient(90deg, transparent 0%, rgba(245, 158, 11, 0.08) 25%, rgba(217, 119, 6, 0.14) 50%, rgba(180, 83, 9, 0.08) 75%, transparent 100%)',
+                'linear-gradient(90deg, transparent 0%, rgba(245, 158, 11, 0.06) 25%, rgba(217, 119, 6, 0.1) 50%, rgba(180, 83, 9, 0.05) 75%, transparent 100%)',
               transform: `translate3d(${parallaxX * 0.5}px, ${parallaxY * 0.2}px, 0)`,
               mixBlendMode: 'screen',
             }}
@@ -136,7 +136,7 @@ export const PlanetAtmosphere: React.FC<PlanetAtmosphereProps> = ({
               width: '45vw',
               height: '35vh',
               background:
-                'radial-gradient(ellipse at 50% 50%, rgba(239, 68, 68, 0.15) 0%, rgba(217, 119, 6, 0.08) 55%, transparent 80%)',
+                'radial-gradient(ellipse at 50% 50%, rgba(239, 68, 68, 0.12) 0%, rgba(217, 119, 6, 0.05) 55%, transparent 80%)',
               mixBlendMode: 'screen',
               transform: `translate3d(${parallaxX * 0.35}px, ${parallaxY * 0.25}px, 0)`,
             }}
@@ -153,7 +153,7 @@ export const PlanetAtmosphere: React.FC<PlanetAtmosphereProps> = ({
               position: 'absolute',
               inset: 0,
               background:
-                'radial-gradient(circle at 60% 40%, rgba(254, 240, 138, 0.12) 0%, rgba(234, 179, 8, 0.08) 50%, rgba(15, 12, 5, 0.35) 100%)',
+                'radial-gradient(circle at 60% 40%, rgba(254, 240, 138, 0.1) 0%, rgba(234, 179, 8, 0.05) 50%, rgba(15, 12, 5, 0.15) 100%)',
               mixBlendMode: 'screen',
             }}
           />
@@ -184,7 +184,7 @@ export const PlanetAtmosphere: React.FC<PlanetAtmosphereProps> = ({
               position: 'absolute',
               inset: 0,
               background:
-                'radial-gradient(circle at 50% 40%, rgba(165, 243, 252, 0.14) 0%, rgba(103, 232, 249, 0.09) 50%, rgba(8, 51, 68, 0.3) 100%)',
+                'radial-gradient(circle at 50% 40%, rgba(165, 243, 252, 0.1) 0%, rgba(103, 232, 249, 0.06) 50%, rgba(8, 51, 68, 0.15) 100%)',
               mixBlendMode: 'screen',
             }}
           />
@@ -198,7 +198,7 @@ export const PlanetAtmosphere: React.FC<PlanetAtmosphereProps> = ({
               width: '140%',
               height: '45%',
               background:
-                'linear-gradient(180deg, transparent 0%, rgba(165, 243, 252, 0.08) 50%, rgba(34, 211, 238, 0.12) 100%)',
+                'linear-gradient(180deg, transparent 0%, rgba(165, 243, 252, 0.06) 50%, rgba(34, 211, 238, 0.08) 100%)',
               transform: `translate3d(${parallaxX * 0.3}px, ${parallaxY * 0.2}px, 0)`,
               mixBlendMode: 'screen',
             }}
@@ -206,7 +206,7 @@ export const PlanetAtmosphere: React.FC<PlanetAtmosphereProps> = ({
         </>
       )}
 
-      {/* NEPTUNE: Deep blue, more turbulent atmospheric flow */}
+      {/* NEPTUNE: Deep rich cobalt/azure oceanic atmosphere (Clear, bright) */}
       {atmosphereType === 'neptune' && (
         <>
           {/* Deep cobalt azure oceanic atmosphere envelope */}
@@ -215,11 +215,11 @@ export const PlanetAtmosphere: React.FC<PlanetAtmosphereProps> = ({
               position: 'absolute',
               inset: 0,
               background:
-                'radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.15) 0%, rgba(29, 78, 216, 0.2) 60%, rgba(15, 23, 42, 0.5) 100%)',
+                'radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.14) 0%, rgba(29, 78, 216, 0.12) 60%, rgba(15, 23, 42, 0.2) 100%)',
               mixBlendMode: 'screen',
             }}
           />
-          {/* Fast supersonic methane storm wind streaks */}
+          {/* Supersonic methane storm wind streaks */}
           <div
             className="neptune-storm-winds"
             style={{
@@ -229,21 +229,9 @@ export const PlanetAtmosphere: React.FC<PlanetAtmosphereProps> = ({
               width: '160%',
               height: '55%',
               background:
-                'linear-gradient(95deg, transparent 0%, rgba(96, 165, 250, 0.12) 30%, rgba(59, 130, 246, 0.18) 60%, transparent 100%)',
+                'linear-gradient(95deg, transparent 0%, rgba(96, 165, 250, 0.1) 30%, rgba(59, 130, 246, 0.14) 60%, transparent 100%)',
               transform: `translate3d(${parallaxX * 0.55}px, ${parallaxY * 0.25}px, 0)`,
               mixBlendMode: 'screen',
-            }}
-          />
-          {/* Dark spot vortex gradient */}
-          <div
-            style={{
-              position: 'absolute',
-              bottom: '30%',
-              right: '15%',
-              width: '35vw',
-              height: '28vh',
-              background:
-                'radial-gradient(ellipse at 50% 50%, rgba(30, 58, 138, 0.25) 0%, transparent 70%)',
             }}
           />
         </>

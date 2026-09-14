@@ -44,26 +44,26 @@ export const PlanetImageWorld: React.FC<PlanetImageWorldProps> = ({
           objectFit: 'cover',
           objectPosition: '50% 50%',
           transform: `translate(-50%, -50%) translate3d(${parallax.midX}px, ${parallax.midY}px, 0) scale(${
-            isSettled ? 1.05 : 1.14
+            isSettled ? 1.15 : 1.22
           })`,
           transition: isSettled
             ? 'transform 0.08s ease-out, opacity 0.6s ease'
             : 'transform 2.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.6s ease',
-          filter: 'brightness(1.02) contrast(1.03)',
-          opacity: imageLoaded ? 1 : 0.8,
+          filter: 'brightness(1.08) contrast(1.08) saturate(1.06)',
+          opacity: imageLoaded ? 1 : 0.85,
           willChange: 'transform',
         }}
       />
 
-      {/* 2. Foreground Depth Ground Shadow Layer */}
+      {/* 2. Foreground Depth Ground Shadow Layer (Crisp, lightened to maximize visibility) */}
       <div
         style={{
           position: 'absolute',
           bottom: 0,
           left: '-5%',
           right: '-5%',
-          height: '35%',
-          background: `linear-gradient(0deg, rgba(8, 8, 12, 0.6) 0%, rgba(12, 12, 18, 0.2) 45%, transparent 100%)`,
+          height: '24%',
+          background: `linear-gradient(0deg, rgba(8, 8, 12, 0.28) 0%, rgba(12, 12, 18, 0.08) 45%, transparent 100%)`,
           transform: `translate3d(${parallax.fgX * 0.35}px, ${parallax.fgY * 0.25}px, 0)`,
           transition: 'transform 0.08s ease-out',
           pointerEvents: 'none',

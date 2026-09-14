@@ -57,16 +57,16 @@ export function usePlanetParallax(): PlanetParallaxOffsets {
       const now = performance.now();
       const elapsed = (now - startTime.current) / 1000;
 
-      // Slow organic idle drift (simulates slow atmospheric surveillance & sensor pan)
-      const idleDriftX = Math.sin(elapsed * 0.2) * 0.16 + Math.sin(elapsed * 0.07) * 0.1;
-      const idleDriftY = Math.cos(elapsed * 0.16) * 0.1 + Math.cos(elapsed * 0.05) * 0.05;
+      // Enhanced organic idle drift (dynamic atmospheric surveillance & gentle drift)
+      const idleDriftX = Math.sin(elapsed * 0.32) * 0.28 + Math.sin(elapsed * 0.12) * 0.18;
+      const idleDriftY = Math.cos(elapsed * 0.26) * 0.18 + Math.cos(elapsed * 0.08) * 0.12;
 
-      const combinedTargetX = mouseTarget.current.x * 0.75 + idleDriftX;
-      const combinedTargetY = mouseTarget.current.y * 0.65 + idleDriftY;
+      const combinedTargetX = mouseTarget.current.x * 0.9 + idleDriftX;
+      const combinedTargetY = mouseTarget.current.y * 0.8 + idleDriftY;
 
-      // Smooth spring interpolation (0.038 for cinematic weight)
-      currentPos.current.x += (combinedTargetX - currentPos.current.x) * 0.038;
-      currentPos.current.y += (combinedTargetY - currentPos.current.y) * 0.038;
+      // Smooth, responsive spring interpolation (0.052 for fluid yet noticeable motion)
+      currentPos.current.x += (combinedTargetX - currentPos.current.x) * 0.052;
+      currentPos.current.y += (combinedTargetY - currentPos.current.y) * 0.052;
 
       const cx = currentPos.current.x;
       const cy = currentPos.current.y;
@@ -74,18 +74,18 @@ export function usePlanetParallax(): PlanetParallaxOffsets {
       setOffsets({
         normX: cx,
         normY: cy,
-        // Background moves subtly (distant mountains / deep cloud features)
-        bgX: -cx * 14,
-        bgY: -cy * 9,
-        // Midground moves moderately (main landscape / cloud bands)
-        midX: -cx * 34,
-        midY: -cy * 20,
+        // Background moves visibly with cinematic depth (mountains / deep clouds)
+        bgX: -cx * 42,
+        bgY: -cy * 26,
+        // Midground moves with pronounced perspective
+        midX: -cx * 68,
+        midY: -cy * 38,
         // Foreground moves fastest
-        fgX: -cx * 62,
-        fgY: -cy * 32,
-        // UI floats with slight counter-perspective
-        uiX: cx * 10,
-        uiY: cy * 6,
+        fgX: -cx * 95,
+        fgY: -cy * 50,
+        // UI floats with pleasant counter-perspective
+        uiX: cx * 12,
+        uiY: cy * 8,
       });
 
       animFrameId.current = requestAnimationFrame(updateLoop);
