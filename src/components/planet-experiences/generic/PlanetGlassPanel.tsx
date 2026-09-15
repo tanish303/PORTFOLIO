@@ -8,32 +8,8 @@ interface PlanetGlassPanelProps {
   uiY: number;
 }
 
-const DEFAULT_GUESTBOOK_ENTRIES: GuestbookEntry[] = [
-  {
-    id: 'entry-1',
-    author: 'Elena Rostova',
-    callsign: 'COSMOS-7',
-    timestamp: '2026.08.19 // 14:22 UTC',
-    message: 'Loved TweniQ! The dual-profile architecture and real-time WebSockets chat are super clean.',
-    origin: 'Orbital Gateway Alpha',
-  },
-  {
-    id: 'entry-2',
-    author: 'Marcus Vance',
-    callsign: 'ZEPHYR-9',
-    timestamp: '2026.09.02 // 08:45 UTC',
-    message: 'CopyWizz is genuinely useful. Great work on the OS-level global hotkey and Gemini API integration.',
-    origin: 'Europa Surface Station',
-  },
-  {
-    id: 'entry-3',
-    author: 'Aria Chen',
-    callsign: 'NOVA-PRIME',
-    timestamp: '2026.09.10 // 19:10 UTC',
-    message: 'Impressive full-stack engineering and attention to detail. SIH 4th rank well deserved!',
-    origin: 'Terra Base Overlook',
-  },
-];
+const DEFAULT_GUESTBOOK_ENTRIES: GuestbookEntry[] = [];
+const GUESTBOOK_STORAGE_KEY = 'guestbook_transmissions_v2';
 
 export const PlanetGlassPanel: React.FC<PlanetGlassPanelProps> = ({ config, uiX, uiY }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -42,7 +18,8 @@ export const PlanetGlassPanel: React.FC<PlanetGlassPanelProps> = ({ config, uiX,
   // Guestbook state
   const [guestbookEntries, setGuestbookEntries] = useState<GuestbookEntry[]>(() => {
     try {
-      const saved = localStorage.getItem('guestbook_transmissions');
+      localStorage.removeItem('guestbook_transmissions');
+      const saved = localStorage.getItem(GUESTBOOK_STORAGE_KEY);
       if (saved) return JSON.parse(saved);
     } catch {
       // fallback
@@ -91,7 +68,7 @@ export const PlanetGlassPanel: React.FC<PlanetGlassPanelProps> = ({ config, uiX,
       const updated = [newEntry, ...guestbookEntries];
       setGuestbookEntries(updated);
       try {
-        localStorage.setItem('guestbook_transmissions', JSON.stringify(updated));
+        localStorage.setItem(GUESTBOOK_STORAGE_KEY, JSON.stringify(updated));
       } catch {
         // ignore
       }
@@ -399,20 +376,26 @@ export const PlanetGlassPanel: React.FC<PlanetGlassPanelProps> = ({ config, uiX,
                 {/* Transmissions List */}
                 <div className="planet-entries-list">
                   <div className="planet-entries-label">INCOMING TRANSMISSION LOGS ({guestbookEntries.length})</div>
-                  {guestbookEntries.map((entry) => (
-                    <div
-                      key={entry.id}
-                      className="planet-entry-card"
-                      style={{ borderLeftColor: config.themeColor }}
-                    >
-                      <div className="planet-entry-meta">
-                        <span className="planet-entry-author">{entry.author}</span>
-                        <span className="planet-entry-callsign">[{entry.callsign}]</span>
-                        <span className="planet-entry-time">{entry.timestamp}</span>
-                      </div>
-                      <p className="planet-entry-body">{entry.message}</p>
+                  {guestbookEntries.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '36px 16px', color: 'rgba(255, 255, 255, 0.45)', fontStyle: 'italic', fontSize: '13px' }}>
+                      No transmissions recorded yet. Be the first explorer to transmit a log!
                     </div>
-                  ))}
+                  ) : (
+                    guestbookEntries.map((entry) => (
+                      <div
+                        key={entry.id}
+                        className="planet-entry-card"
+                        style={{ borderLeftColor: config.themeColor }}
+                      >
+                        <div className="planet-entry-meta">
+                          <span className="planet-entry-author">{entry.author}</span>
+                          <span className="planet-entry-callsign">[{entry.callsign}]</span>
+                          <span className="planet-entry-time">{entry.timestamp}</span>
+                        </div>
+                        <p className="planet-entry-body">{entry.message}</p>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             ) : config.isContact ? (

@@ -18,17 +18,17 @@ export interface ChatMessage {
 }
 
 const SUGGESTED_QUESTIONS = [
-  'Who is Tanish?',
+  'What does each planet represent?',
+  'Tell me about his experience.',
   'What projects has Tanish built?',
   'What are his strongest technical skills?',
-  'Tell me about his experience.',
-  'Which project should I check out?',
+  'Who is Tanish?',
   'Why should I hire Tanish?',
 ];
 
 const INITIAL_MESSAGE: ChatMessage = {
   id: 'init-1',
-  text: "Hi! I'm Tanish's personal AI assistant. I have full context on his projects, technical stack, internships, and education. What would you like to know about him?",
+  text: "Hi! I'm Tanish's personal AI assistant. I have full context on his projects, technical stack, internships, education, and this 3D interplanetary portfolio. What would you like to know?",
   isUser: false,
   timestamp: new Date(),
 };

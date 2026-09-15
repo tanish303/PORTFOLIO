@@ -13,26 +13,8 @@ interface GuestbookEntry {
   createdAt: string;
 }
 
-const INITIAL_MESSAGES: GuestbookEntry[] = [
-  {
-    id: 'msg-1',
-    name: 'Elena Rostova',
-    message: 'Loved TweniQ! The dual-profile architecture and real-time WebSockets chat are super clean.',
-    createdAt: '2026-08-19',
-  },
-  {
-    id: 'msg-2',
-    name: 'Marcus Vance',
-    message: 'CopyWizz is genuinely useful. Great work on the OS-level global hotkey and Gemini API integration.',
-    createdAt: '2026-09-02',
-  },
-  {
-    id: 'msg-3',
-    name: 'Aria Chen',
-    message: 'Impressive full-stack engineering and attention to detail. SIH 4th rank well deserved!',
-    createdAt: '2026-09-10',
-  },
-];
+const INITIAL_MESSAGES: GuestbookEntry[] = [];
+const STORAGE_KEY = 'tanish_guestbook_entries_v2';
 
 export const SaturnGuestbookPanel: React.FC<SaturnGuestbookPanelProps> = ({
   uiX = 0,
@@ -40,7 +22,11 @@ export const SaturnGuestbookPanel: React.FC<SaturnGuestbookPanelProps> = ({
 }) => {
   const [entries, setEntries] = useState<GuestbookEntry[]>(() => {
     try {
-      const saved = localStorage.getItem('tanish_guestbook_entries');
+      // Clear legacy mock data if present
+      localStorage.removeItem('tanish_guestbook_entries');
+      localStorage.removeItem('guestbook_transmissions');
+
+      const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) return JSON.parse(saved);
     } catch {
       // ignore
@@ -70,7 +56,7 @@ export const SaturnGuestbookPanel: React.FC<SaturnGuestbookPanelProps> = ({
       const updated = [newEntry, ...entries];
       setEntries(updated);
       try {
-        localStorage.setItem('tanish_guestbook_entries', JSON.stringify(updated));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
       } catch {
         // ignore
       }
@@ -142,20 +128,26 @@ export const SaturnGuestbookPanel: React.FC<SaturnGuestbookPanelProps> = ({
           <div className="saturn-guestbook-list-col">
             <h3 className="saturn-col-heading">Recent Messages</h3>
             <div className="saturn-messages-scroll">
-              {entries.map((entry) => (
-                <div key={entry.id} className="saturn-msg-item">
-                  <div className="saturn-msg-top">
-                    <div className="saturn-msg-avatar">
-                      {entry.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <div className="saturn-msg-author">{entry.name}</div>
-                      <div className="saturn-msg-date">{entry.createdAt}</div>
-                    </div>
-                  </div>
-                  <p className="saturn-msg-body">{entry.message}</p>
+              {entries.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '48px 16px', color: 'rgba(255, 255, 255, 0.45)', fontSize: '0.9rem', lineHeight: '1.6' }}>
+                  No messages yet.<br />Be the first to leave a message on Saturn!
                 </div>
-              ))}
+              ) : (
+                entries.map((entry) => (
+                  <div key={entry.id} className="saturn-msg-item">
+                    <div className="saturn-msg-top">
+                      <div className="saturn-msg-avatar">
+                        {entry.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="saturn-msg-author">{entry.name}</div>
+                        <div className="saturn-msg-date">{entry.createdAt}</div>
+                      </div>
+                    </div>
+                    <p className="saturn-msg-body">{entry.message}</p>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

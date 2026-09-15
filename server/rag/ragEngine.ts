@@ -19,7 +19,7 @@ export interface RetrievedChunk {
 
 const CACHE_FILE_PATH = path.resolve(process.cwd(), 'server/rag/embeddings-cache.json');
 
-const CURRENT_CACHE_VERSION = '2.0';
+const CURRENT_CACHE_VERSION = '3.0';
 
 let inMemoryVectors: Map<string, number[]> = new Map();
 let isInitialized = false;
@@ -173,6 +173,7 @@ function computeKeywordScore(query: string, chunk: KnowledgeChunk): number {
   if ((q.includes('college') || q.includes('degree') || q.includes('education')) && chunk.id === 'education-academics') score += 4;
   if ((q.includes('contact') || q.includes('email') || q.includes('phone') || q.includes('linkedin')) && chunk.id === 'contact-socials') score += 4;
   if (q.includes('why hire') && chunk.id === 'why-hire-tanish') score += 4;
+  if ((q.includes('portfolio') || q.includes('website') || q.includes('planet') || q.includes('solar') || q.includes('universe') || q.includes('sun') || q.includes('mercury') || q.includes('venus') || q.includes('earth') || q.includes('mars') || q.includes('jupiter') || q.includes('saturn') || q.includes('uranus') || q.includes('neptune') || q.includes('rocket') || q.includes('supernova') || q.includes('orbit')) && chunk.id === 'portfolio-universe-planets') score += 8;
 
   // General experience/internship query boost: CloudTechner is MAIN and MUST be ranked highest
   if (q.includes('experience') || q.includes('internship') || q.includes('work') || q.includes('job') || q.includes('company') || q.includes('companies')) {
