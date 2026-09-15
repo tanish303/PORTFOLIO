@@ -45,6 +45,7 @@ export const Rocket: React.FC<RocketProps> = ({
   const _right = useRef(new THREE.Vector3());
   const _orthoUp = useRef(new THREE.Vector3());
   const _rotMatrix = useRef(new THREE.Matrix4());
+  const _targetQuat = useRef(new THREE.Quaternion());
   const _nozzleLocal = useRef(new THREE.Vector3(0, -0.04, -0.75));
   const _nozzleWorld = useRef(new THREE.Vector3());
   const _lerpHead = useRef(new THREE.Vector3());
@@ -69,7 +70,7 @@ export const Rocket: React.FC<RocketProps> = ({
     return texture;
   }, []);
 
-  useFrame((state) => {
+  useFrame((state, delta) => {
     if (!groupRef.current) return;
 
     if (visible === false) {
@@ -107,7 +108,11 @@ export const Rocket: React.FC<RocketProps> = ({
       const orthoUp = _orthoUp.current.crossVectors(direction, right).normalize();
 
       _rotMatrix.current.makeBasis(right, orthoUp, direction);
-      groupRef.current.quaternion.setFromRotationMatrix(_rotMatrix.current);
+      _targetQuat.current.setFromRotationMatrix(_rotMatrix.current);
+
+      // Silky smooth angular slerp — prevents snapping or jitter during phase transitions
+      const slerpFactor = Math.min(1.0, (delta || 0.016) * 12.0);
+      groupRef.current.quaternion.slerp(_targetQuat.current, slerpFactor);
 
       currentForward.current.copy(direction);
     }

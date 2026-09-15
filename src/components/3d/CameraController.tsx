@@ -232,13 +232,12 @@ export const CameraController: React.FC<CameraControllerProps> = ({
         }
 
         case 'VERTICAL_ASCENT': {
-          // PHASE 3: Rocket emerges vertically away from planet. Camera stays framed on planet, tracking rocket into space above
           targetCamPos.current.copy(framedCamPos);
           const trackPoint = framedLookAt.clone().lerp(rocketPos, 0.22 * phaseProgress);
           targetLookAt.current.copy(trackPoint);
 
-          camera.position.lerp(targetCamPos.current, 0.1);
-          currentLookAt.current.lerp(targetLookAt.current, 0.12);
+          camera.position.lerp(targetCamPos.current, 0.04);
+          currentLookAt.current.lerp(targetLookAt.current, 0.05);
           break;
         }
 
@@ -248,7 +247,6 @@ export const CameraController: React.FC<CameraControllerProps> = ({
             turnStartLookAt.current.copy(currentLookAt.current);
           }
 
-          // Chase camera position behind and elevated above rocket
           const behindOffset = rocketDir.clone().negate().multiplyScalar(8.5);
           const upOffset = new THREE.Vector3(0, 2.6, 0);
           const chaseCamPos = rocketPos.clone().add(behindOffset).add(upOffset);
@@ -260,21 +258,22 @@ export const CameraController: React.FC<CameraControllerProps> = ({
           targetCamPos.current.lerpVectors(turnStartCamPos.current, chaseCamPos, ease);
           targetLookAt.current.lerpVectors(turnStartLookAt.current, chaseLookAt, ease);
 
-          camera.position.lerp(targetCamPos.current, 0.12);
-          currentLookAt.current.lerp(targetLookAt.current, 0.14);
+          // Very gentle lerp — camera glides into position over the full turn arc
+          camera.position.lerp(targetCamPos.current, 0.05);
+          currentLookAt.current.lerp(targetLookAt.current, 0.06);
           break;
         }
 
         case 'DIRECT_CRUISE':
         case 'APPROACH_DOCK': {
-          // Chase camera directly following behind rocket, looking ahead at destination
           const behindOffset = rocketDir.clone().negate().multiplyScalar(8.5);
           const upOffset = new THREE.Vector3(0, 2.6, 0);
           targetCamPos.current.copy(rocketPos).add(behindOffset).add(upOffset);
           targetLookAt.current.copy(rocketPos).add(rocketDir.clone().multiplyScalar(16.0));
 
-          camera.position.lerp(targetCamPos.current, 0.14);
-          currentLookAt.current.lerp(targetLookAt.current, 0.16);
+          // Low lerp = silky smooth camera glide behind the rocket
+          camera.position.lerp(targetCamPos.current, 0.05);
+          currentLookAt.current.lerp(targetLookAt.current, 0.06);
           break;
         }
 
@@ -284,18 +283,18 @@ export const CameraController: React.FC<CameraControllerProps> = ({
           targetCamPos.current.copy(rocketPos).add(behindOffset).add(upOffset);
           targetLookAt.current.copy(rocketPos).add(rocketDir.clone().multiplyScalar(16.0));
 
-          camera.position.lerp(targetCamPos.current, 0.1);
-          currentLookAt.current.lerp(targetLookAt.current, 0.12);
+          camera.position.lerp(targetCamPos.current, 0.04);
+          currentLookAt.current.lerp(targetLookAt.current, 0.05);
         }
       }
 
       prevFlightPhase.current = flightPhase;
 
-      // Dynamic FOV for cinematic sensation
-      const targetFOV = 45 + Math.sin(flightProgress * Math.PI) * 5;
+      // Dynamic FOV — very gentle breathe, barely noticeable
+      const targetFOV = 45 + Math.sin(flightProgress * Math.PI) * 3;
       if ((camera as THREE.PerspectiveCamera).fov) {
         const pCam = camera as THREE.PerspectiveCamera;
-        pCam.fov = THREE.MathUtils.lerp(pCam.fov, targetFOV, 0.05);
+        pCam.fov = THREE.MathUtils.lerp(pCam.fov, targetFOV, 0.025);
         pCam.updateProjectionMatrix();
       }
 

@@ -267,16 +267,16 @@ export function App() {
             setTimeout(() => {
               atmosphereFlowRef.current = 'skipping_clouds';
               setAtmosphereFlowPhase('skipping_clouds');
-            }, 250);
+            }, 600);
             setTimeout(() => {
               setActiveExperience(currentBody.id);
               atmosphereFlowRef.current = 'clearing';
               setAtmosphereFlowPhase('clearing');
-            }, 600);
+            }, 1400);
             setTimeout(() => {
               atmosphereFlowRef.current = 'idle';
               setAtmosphereFlowPhase('idle');
-            }, 1250);
+            }, 2600);
           }
           return;
         }
@@ -291,7 +291,7 @@ export function App() {
 
       soundController.playTargetLock();
       setTargetBodyId(id);
-      const tFocus = 0.35; // Snappy, dynamic departure focus
+      const tFocus = 0.65; // Gentle, cinematic departure focus
       focusDuration.current = tFocus;
       setIsOverview(false); // Smoothly stop overview mode, focus on current departure planet
 
@@ -359,11 +359,11 @@ export function App() {
       setIsOverview(true); // Return to full system overview
       atmosphereFlowRef.current = 'clearing';
       setAtmosphereFlowPhase('clearing');
-    }, 450);
+    }, 800);
     setTimeout(() => {
       atmosphereFlowRef.current = 'idle';
       setAtmosphereFlowPhase('idle');
-    }, 1050);
+    }, 1900);
   }, []);
 
   // Physics & Animation Loop Frame Callback
@@ -481,7 +481,7 @@ export function App() {
             rocketSimPos.current.copy(ascentPos);
 
             // Velocity vector points strictly along outward launch normal
-            const ascentSpeed = 15.0 + easeAscent * 35.0;
+            const ascentSpeed = 12.0 + easeAscent * 24.0;
             const velocity = launchDir.current.clone().multiplyScalar(ascentSpeed);
             rocketSimVel.current.copy(velocity);
             currentSpeed = ascentSpeed;
@@ -495,7 +495,7 @@ export function App() {
           }
 
           case 'TRANSITION_TURN': {
-            const dur = 0.45;
+            const dur = 1.05; // Majestic, smooth banking turn
             const p = THREE.MathUtils.clamp(tInPhase / dur, 0, 1);
             phaseP = p;
 
@@ -506,7 +506,7 @@ export function App() {
             const ease = p * p * (3 - 2 * p);
             const turnDir = launchDir.current.clone().lerp(toDest, ease).normalize();
 
-            const turnSpeed = 45.0 + ease * 35.0;
+            const turnSpeed = 24.0 + ease * 18.0;
             const velocity = turnDir.clone().multiplyScalar(turnSpeed);
             rocketSimVel.current.copy(velocity);
             rocketSimPos.current.addScaledVector(velocity, dt);
@@ -543,14 +543,14 @@ export function App() {
               }
             }
 
-            // Velocity-based movement: velocity = desiredDirection * speed; position += velocity * delta
-            const cruiseSpeed = THREE.MathUtils.clamp(distToTarget * 1.8, 75.0, 115.0);
+            // Velocity-based movement: smooth, cinematic, and deliberate cruise
+            const cruiseSpeed = THREE.MathUtils.clamp(distToTarget * 0.5 + 16.0, 24.0, 48.0);
             const velocity = cruiseDir.clone().multiplyScalar(cruiseSpeed);
             rocketSimVel.current.copy(velocity);
             rocketSimPos.current.addScaledVector(velocity, dt);
             currentSpeed = cruiseSpeed;
 
-            if (distToTarget <= targetBody.radius + 8.5) {
+            if (distToTarget <= targetBody.radius + 11.5) {
               setFlightPhase('APPROACH_DOCK');
               phaseStartTime.current = now;
               setFlightStatus('BRAKING');
@@ -568,7 +568,7 @@ export function App() {
             const remaining = distToTarget - surfaceContactDist;
 
             // Step 1: Rocket entering planet atmosphere (wisps, hypersonic speed lines, plasma entry glow)
-            if (remaining <= 5.8 && targetBody.id !== 'sun') {
+            if (remaining <= 7.5 && targetBody.id !== 'sun') {
               if (atmosphereFlowRef.current === 'idle') {
                 atmosphereFlowRef.current = 'entering';
                 setAtmosphereFlowPhase('entering');
@@ -578,7 +578,7 @@ export function App() {
             }
 
             // Step 2: Plunging through cloud strata ("skipping clouds" at supersonic speed)
-            if (remaining <= 2.8 && targetBody.id !== 'sun') {
+            if (remaining <= 4.0 && targetBody.id !== 'sun') {
               if (atmosphereFlowRef.current === 'entering') {
                 atmosphereFlowRef.current = 'skipping_clouds';
                 setAtmosphereFlowPhase('skipping_clouds');
@@ -638,7 +638,7 @@ export function App() {
                 setTimeout(() => {
                   atmosphereFlowRef.current = 'idle';
                   setAtmosphereFlowPhase('idle');
-                }, 750);
+                }, 1400);
               }
 
               setFlightProgress(1.0);
@@ -646,7 +646,7 @@ export function App() {
               setCurrentSpeedKmS(7.8);
             } else {
               // Smooth deceleration towards surface with closing speed against orbiting body
-              const approachSpeed = THREE.MathUtils.clamp(remaining * 6.5 + 16.0, 18.0, 58.0);
+              const approachSpeed = THREE.MathUtils.clamp(remaining * 2.2 + 3.2, 3.5, 22.0);
               const velocity = approachDir.clone().multiplyScalar(approachSpeed);
               rocketSimVel.current.copy(velocity);
               rocketSimPos.current.addScaledVector(velocity, dt);
@@ -695,7 +695,7 @@ export function App() {
       {/* 3D WebGL Canvas */}
       <div className={`canvas-container ${isSupernovaActive ? 'supernova-exploding-active' : ''}`}>
         <Canvas
-          frameloop={activeExperience ? 'never' : 'always'}
+          frameloop={activeExperience && atmosphereFlowPhase === 'idle' ? 'never' : 'always'}
           dpr={[1, Math.min(typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1, 1.35)]}
           camera={{ position: [0, 160, 195], fov: 45, near: 0.1, far: 2000 }}
           gl={{ antialias: false, alpha: false, powerPreference: 'high-performance', stencil: false, depth: true }}
