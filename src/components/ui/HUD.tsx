@@ -157,14 +157,9 @@ export const HUD: React.FC<HUDProps> = ({
         </div>
       </div>
 
-      {/* Full-screen Flash Overlay during Supernova detonation */}
+      {/* Full-screen Supernova Overlay — real explosion sequence managed by CSS animation */}
       {isSupernova && (
-        <div
-          className="supernova-screen-flash"
-          style={{
-            opacity: flightStatus === 'SUPERNOVA_EXPLODING' ? 0.9 : 0.2,
-          }}
-        />
+        <div className="supernova-screen-flash" />
       )}
     </div>
   );
