@@ -32,27 +32,22 @@ export const Planet: React.FC<PlanetProps> = ({
 
   const texture = getProceduralTexture(data.surfaceTheme);
 
-  // Generate orbital ring path
-  const orbitPoints = useMemo(() => {
+  // Generate orbital ring path — computed once, never recreated
+  const orbitLine = useMemo(() => {
     const points: THREE.Vector3[] = [];
-    const segments = 140;
+    const segments = 96; // reduced from 140 — imperceptible quality diff, 31% fewer vertices
     const period = (Math.PI * 2) / data.orbitSpeed;
     for (let i = 0; i <= segments; i++) {
       const t = (i / segments) * period;
       const [x, y, z] = calculateOrbitalPosition(data, t);
       points.push(new THREE.Vector3(x, y, z));
     }
-    return points;
-  }, [data]);
-
-  const orbitLine = useMemo(() => {
-    const geom = new THREE.BufferGeometry().setFromPoints(orbitPoints);
-    // Outer distant orbits (like Neptune at r=162) need stronger minimum opacity to stay crisp against dark space
+    const geom = new THREE.BufferGeometry().setFromPoints(points);
     const baseOpacity = data.id === 'askai' ? 0.32 : Math.max(0.16, 0.12 + data.orbitRadius * 0.001);
     const mat = new THREE.LineBasicMaterial({
       color: data.color,
       transparent: true,
-      opacity: hovered || isSelected ? 0.65 : baseOpacity,
+      opacity: baseOpacity, // updated in useFrame, not in deps
       blending: THREE.AdditiveBlending,
       depthTest: true,
       depthWrite: false,
@@ -60,10 +55,10 @@ export const Planet: React.FC<PlanetProps> = ({
     const line = new THREE.Line(geom, mat);
     line.renderOrder = 0;
     return line;
-  }, [orbitPoints, data.color, data.id, data.orbitRadius, hovered, isSelected]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.id]); // only rebuild if planet identity changes — never for hover/select
 
   useFrame((state, delta) => {
-    // Current orbital position directly from clock
     const t = state.clock.getElapsedTime();
     const [x, y, z] = calculateOrbitalPosition(data, t);
     if (groupRef.current) {
@@ -73,12 +68,16 @@ export const Planet: React.FC<PlanetProps> = ({
       onPositionUpdate(data.id, [x, y, z]);
     }
 
-    // Planetary rotation
+    // Update orbit line opacity reactively — avoids recreating GPU buffer on hover
+    const orbitMat = orbitLine.material as THREE.LineBasicMaterial;
+    const targetOpacity = hovered || isSelected ? 0.65 : (data.id === 'askai' ? 0.32 : Math.max(0.16, 0.12 + data.orbitRadius * 0.001));
+    if (Math.abs(orbitMat.opacity - targetOpacity) > 0.01) {
+      orbitMat.opacity = targetOpacity;
+    }
+
     if (meshRef.current) {
       meshRef.current.rotation.y += delta * data.rotationSpeed;
     }
-
-    // Moons rotation if present
     if (moonGroupRef.current) {
       moonGroupRef.current.rotation.y += delta * 0.9;
     }
@@ -144,7 +143,7 @@ export const Planet: React.FC<PlanetProps> = ({
             scale={hovered ? 1.06 : 1.0}
             renderOrder={1}
           >
-            <sphereGeometry args={[data.radius, 48, 48]} />
+            <sphereGeometry args={[data.radius, 32, 32]} />
             <meshStandardMaterial
               map={texture}
               roughness={0.65}
@@ -161,7 +160,7 @@ export const Planet: React.FC<PlanetProps> = ({
           {/* Atmosphere Halo Glow - FrontSide subtle rim glow */}
           {data.atmosphereColor && (
             <mesh scale={data.atmosphereScale || 1.12} renderOrder={2}>
-              <sphereGeometry args={[data.radius, 32, 32]} />
+              <sphereGeometry args={[data.radius, 20, 20]} />
               <meshBasicMaterial
                 color={data.atmosphereColor}
                 transparent

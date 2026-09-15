@@ -75,9 +75,9 @@ export const SpaceBackground: React.FC = () => {
     return { glowingPositions: positions, glowingColors: colors };
   }, []);
 
-  // Primary Starfield: 3,200 natural round stars with subtle color temp variation (lightweight 60fps)
+  // Primary Starfield: 2000 natural round stars (reduced from 3200 for perf)
   const { starPositions, starColors } = useMemo(() => {
-    const count = 3200;
+    const count = 2000;
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
 
@@ -90,30 +90,29 @@ export const SpaceBackground: React.FC = () => {
       positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
       positions[i * 3 + 2] = r * Math.cos(phi);
 
-      // Natural stellar spectra: O/B blue-white, A/F crisp white, G/K warm yellow
       const temp = Math.random();
       if (temp > 0.82) {
         colors[i * 3] = 0.75;
         colors[i * 3 + 1] = 0.88;
-        colors[i * 3 + 2] = 1.0; // Cool Blue-White
+        colors[i * 3 + 2] = 1.0;
       } else if (temp > 0.68) {
         colors[i * 3] = 1.0;
         colors[i * 3 + 1] = 0.92;
-        colors[i * 3 + 2] = 0.78; // Warm Golden
+        colors[i * 3 + 2] = 0.78;
       } else {
         const val = 0.85 + Math.random() * 0.15;
         colors[i * 3] = val;
         colors[i * 3 + 1] = val;
-        colors[i * 3 + 2] = val; // Crisp White
+        colors[i * 3 + 2] = val;
       }
     }
 
     return { starPositions: positions, starColors: colors };
   }, []);
 
-  // Distant Micro Star Cluster (Faint deep space background layer)
+  // Distant Micro Star Cluster (reduced from 1400 to 800)
   const distantPositions = useMemo(() => {
-    const count = 1400;
+    const count = 800;
     const positions = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
       const r = 500 + Math.random() * 260;
@@ -126,9 +125,9 @@ export const SpaceBackground: React.FC = () => {
     return positions;
   }, []);
 
-  // Subtle natural space dust / cosmic haze (smooth circular particles)
+  // Cosmic dust (reduced from 300 to 150)
   const dustPositions = useMemo(() => {
-    const count = 300;
+    const count = 150;
     const positions = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
       const r = 200 + Math.random() * 250;
@@ -140,6 +139,11 @@ export const SpaceBackground: React.FC = () => {
     }
     return positions;
   }, []);
+
+  // Meteor pre-allocated scratch vectors
+  const _meteorHead = useRef(new THREE.Vector3());
+  const _meteorTail = useRef(new THREE.Vector3());
+  const _frameCount = useRef(0);
 
   // Shooting star animation state
   const meteorState = useRef({
@@ -170,27 +174,25 @@ export const SpaceBackground: React.FC = () => {
   }, [meteorGeometry]);
 
   useFrame((_, delta) => {
-    // Subtle background celestial drift
-    if (starsRef.current) {
-      starsRef.current.rotation.y += delta * 0.002;
-    }
-    if (glowingStarsRef.current) {
-      glowingStarsRef.current.rotation.y += delta * 0.0018;
-      const t = performance.now() * 0.001;
-      const mat = glowingStarsRef.current.material as THREE.PointsMaterial;
-      if (mat) {
-        mat.size = 5.4 + Math.sin(t * 1.8) * 0.8;
-        mat.opacity = 0.88 + Math.sin(t * 2.4) * 0.1;
-      }
-    }
-    if (distantStarsRef.current) {
-      distantStarsRef.current.rotation.y += delta * 0.001;
-    }
-    if (dustRef.current) {
-      dustRef.current.rotation.y += delta * 0.0015;
+    _frameCount.current++;
+    // Only rotate stars on even frames (halves the update cost — imperceptible at 60fps)
+    if (_frameCount.current % 2 === 0) {
+      if (starsRef.current) starsRef.current.rotation.y += delta * 0.004;
+      if (distantStarsRef.current) distantStarsRef.current.rotation.y += delta * 0.002;
     }
 
-    // Occasional shooting star
+    // Glowing star twinkle — every 3rd frame
+    if (_frameCount.current % 3 === 0 && glowingStarsRef.current) {
+      glowingStarsRef.current.rotation.y += delta * 0.0054;
+      const tVal = performance.now() * 0.001;
+      const mat = glowingStarsRef.current.material as THREE.PointsMaterial;
+      if (mat) {
+        mat.size = 5.4 + Math.sin(tVal * 1.8) * 0.8;
+        mat.opacity = 0.88 + Math.sin(tVal * 2.4) * 0.1;
+      }
+    }
+
+    // Shooting star
     const m = meteorState.current;
     if (!m.active) {
       m.timer -= delta;
@@ -216,12 +218,13 @@ export const SpaceBackground: React.FC = () => {
         meteorLine.visible = false;
       } else {
         meteorLine.visible = true;
-        const head = new THREE.Vector3().lerpVectors(m.start, m.end, m.progress);
-        const tail = new THREE.Vector3().lerpVectors(m.start, m.end, Math.max(0, m.progress - 0.22));
+        // Use pre-allocated vectors
+        _meteorHead.current.lerpVectors(m.start, m.end, m.progress);
+        _meteorTail.current.lerpVectors(m.start, m.end, Math.max(0, m.progress - 0.22));
 
         const posAttr = meteorGeometry.getAttribute('position') as THREE.BufferAttribute;
-        posAttr.setXYZ(0, head.x, head.y, head.z);
-        posAttr.setXYZ(1, tail.x, tail.y, tail.z);
+        posAttr.setXYZ(0, _meteorHead.current.x, _meteorHead.current.y, _meteorHead.current.z);
+        posAttr.setXYZ(1, _meteorTail.current.x, _meteorTail.current.y, _meteorTail.current.z);
         posAttr.needsUpdate = true;
       }
     }

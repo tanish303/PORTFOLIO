@@ -38,6 +38,17 @@ export const Rocket: React.FC<RocketProps> = ({
   // Orientation tracking
   const currentForward = useRef(new THREE.Vector3(0, 0, 1));
   const prevPos = useRef(new THREE.Vector3(...currentPos));
+  // Pre-allocated scratch vectors to avoid GC pressure (no new THREE.Vector3 in hot path)
+  const _shipPos = useRef(new THREE.Vector3());
+  const _vel = useRef(new THREE.Vector3());
+  const _upRef = useRef(new THREE.Vector3());
+  const _right = useRef(new THREE.Vector3());
+  const _orthoUp = useRef(new THREE.Vector3());
+  const _rotMatrix = useRef(new THREE.Matrix4());
+  const _nozzleLocal = useRef(new THREE.Vector3(0, -0.04, -0.75));
+  const _nozzleWorld = useRef(new THREE.Vector3());
+  const _lerpHead = useRef(new THREE.Vector3());
+  const _lerpTail = useRef(new THREE.Vector3());
 
   // Glowing circular particle texture for exhaust
   const exhaustSprite = useMemo(() => {
@@ -58,7 +69,7 @@ export const Rocket: React.FC<RocketProps> = ({
     return texture;
   }, []);
 
-  useFrame(() => {
+  useFrame((state) => {
     if (!groupRef.current) return;
 
     if (visible === false) {
@@ -70,40 +81,39 @@ export const Rocket: React.FC<RocketProps> = ({
       if (trailRef.current) trailRef.current.visible = true;
     }
 
-    const shipPos = new THREE.Vector3(...currentPos);
+    // Use pre-allocated Vector3 (no GC)
+    const shipPos = _shipPos.current.set(currentPos[0], currentPos[1], currentPos[2]);
     groupRef.current.position.copy(shipPos);
 
-    // Compute velocity from travelVelocity (or position delta)
     let vel: THREE.Vector3;
     if (travelVelocity && (travelVelocity[0] !== 0 || travelVelocity[1] !== 0 || travelVelocity[2] !== 0)) {
-      vel = new THREE.Vector3(...travelVelocity);
+      vel = _vel.current.set(travelVelocity[0], travelVelocity[1], travelVelocity[2]);
     } else {
-      vel = shipPos.clone().sub(prevPos.current);
+      vel = _vel.current.copy(shipPos).sub(prevPos.current);
     }
     const speed = vel.length();
     prevPos.current.copy(shipPos);
 
-    // Strict needle alignment: ROCKET_FORWARD (+Z) points exactly along velocity direction
     if (speed > 0.0001) {
-      const direction = vel.clone().normalize();
+      const direction = vel.normalize(); // normalize in place
 
-      // Stable upright frame: local +Y (cockpit dome) stays dorsal/upward relative to deep space
-      const upRef = Math.abs(direction.y) > 0.96
-        ? new THREE.Vector3(0, 0, -Math.sign(direction.y || 1))
-        : new THREE.Vector3(0, 1, 0);
-      const right = new THREE.Vector3().crossVectors(upRef, direction).normalize();
-      const orthoUp = new THREE.Vector3().crossVectors(direction, right).normalize();
+      const upRef = _upRef.current;
+      if (Math.abs(direction.y) > 0.96) {
+        upRef.set(0, 0, -Math.sign(direction.y || 1));
+      } else {
+        upRef.set(0, 1, 0);
+      }
+      const right = _right.current.crossVectors(upRef, direction).normalize();
+      const orthoUp = _orthoUp.current.crossVectors(direction, right).normalize();
 
-      const rotMatrix = new THREE.Matrix4();
-      // Basis: col 0 = right (+X), col 1 = orthoUp (+Y), col 2 = direction (+Z)
-      rotMatrix.makeBasis(right, orthoUp, direction);
-      groupRef.current.quaternion.setFromRotationMatrix(rotMatrix);
+      _rotMatrix.current.makeBasis(right, orthoUp, direction);
+      groupRef.current.quaternion.setFromRotationMatrix(_rotMatrix.current);
 
       currentForward.current.copy(direction);
     }
 
-    // Dynamic Multi-Layer Engine Thruster Flame Animation
-    const nowTime = Date.now() * 0.04;
+    // Flame animation using clock (no Date.now())
+    const nowTime = state.clock.getElapsedTime() * 40;
     const flicker = 1.0 + Math.sin(nowTime) * 0.18 + Math.cos(nowTime * 1.7) * 0.12;
 
     if (isFlying) {
@@ -112,32 +122,26 @@ export const Rocket: React.FC<RocketProps> = ({
 
       switch (flightPhase) {
         case 'FOCUS_DEPARTURE':
-          // Rocket waiting on planet surface
           isIgnited = false;
           stageFactor = 0.15;
           break;
         case 'HOLD_DEPARTURE':
-          // Engine igniters spooling up
           isIgnited = true;
           stageFactor = 0.45;
           break;
         case 'VERTICAL_ASCENT':
-          // Maximum full afterburner liftoff blast!
           isIgnited = true;
           stageFactor = 1.55;
           break;
         case 'TRANSITION_TURN':
-          // High thrust turn
           isIgnited = true;
           stageFactor = 1.25;
           break;
         case 'DIRECT_CRUISE':
-          // Steady elongated hypersonic plume
           isIgnited = true;
           stageFactor = 1.05;
           break;
         case 'APPROACH_DOCK':
-          // Decelerating retro-burn
           isIgnited = true;
           stageFactor = 0.55;
           break;
@@ -164,7 +168,6 @@ export const Rocket: React.FC<RocketProps> = ({
       }
       soundController.setThrusterLevel(Math.min(1.0, stageFactor));
     } else {
-      // Docked idle blue pilot flame
       if (coreFlameRef.current) {
         coreFlameRef.current.scale.set(0.35, 0.35, 0.4);
         coreFlameRef.current.visible = true;
@@ -179,14 +182,13 @@ export const Rocket: React.FC<RocketProps> = ({
       soundController.setThrusterLevel(0);
     }
 
-    // Update Particle Exhaust Trail rigidly anchored to thruster nozzle
+    // Trail: use pre-allocated vectors
     if (trailRef.current) {
       if (isFlying) {
-        // Thruster bell nozzle point in local space, transformed to world coordinates
-        const nozzleLocal = new THREE.Vector3(0, -0.04, -0.75);
-        const nozzleWorld = groupRef.current.localToWorld(nozzleLocal.clone());
-
-        trailHistory.current.unshift(nozzleWorld);
+        _nozzleWorld.current.copy(
+          groupRef.current.localToWorld(_nozzleLocal.current.clone())
+        );
+        trailHistory.current.unshift(_nozzleWorld.current.clone());
         if (trailHistory.current.length > trailCount) {
           trailHistory.current.pop();
         }
@@ -209,7 +211,6 @@ export const Rocket: React.FC<RocketProps> = ({
       posAttr.needsUpdate = true;
     }
 
-    // Broadcast world coordinates & forward direction for camera chase
     onRocketWorldPosUpdate(shipPos, currentForward.current, speed);
   });
 

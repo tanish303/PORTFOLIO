@@ -20,21 +20,20 @@ export const Sun: React.FC<SunProps> = ({ onSelect, isSelected, isExploding, hid
 
   const texture = getProceduralTexture('sun');
 
-  useFrame((_, delta) => {
-    // Continuous solar rotation
+  useFrame((state, delta) => {
+    const t = state.clock.getElapsedTime();
     if (sunMeshRef.current) {
       sunMeshRef.current.rotation.y += delta * 0.12;
       sunMeshRef.current.rotation.x += delta * 0.04;
     }
-    // Pulsing shimmering corona
     if (coronaRef.current) {
       coronaRef.current.rotation.y -= delta * 0.08;
-      const s = 1.0 + Math.sin(Date.now() * 0.002) * 0.03 + (hovered ? 0.08 : 0);
+      const s = 1.0 + Math.sin(t * 2) * 0.03 + (hovered ? 0.08 : 0);
       coronaRef.current.scale.set(s, s, s);
     }
     if (flareRef.current) {
       flareRef.current.rotation.z += delta * 0.05;
-      const s = 1.15 + Math.cos(Date.now() * 0.0018) * 0.04 + (hovered ? 0.12 : 0);
+      const s = 1.15 + Math.cos(t * 1.8) * 0.04 + (hovered ? 0.12 : 0);
       flareRef.current.scale.set(s, s, s);
     }
   });
@@ -73,7 +72,7 @@ export const Sun: React.FC<SunProps> = ({ onSelect, isSelected, isExploding, hid
           document.body.style.cursor = 'default';
         }}
       >
-        <sphereGeometry args={[SUN_DATA.radius, 48, 48]} />
+        <sphereGeometry args={[SUN_DATA.radius, 32, 32]} />
         <meshBasicMaterial
           map={texture}
           color={isExploding ? '#ffffff' : hovered || isSelected ? '#fff0c2' : '#ffffff'}
@@ -84,7 +83,7 @@ export const Sun: React.FC<SunProps> = ({ onSelect, isSelected, isExploding, hid
 
       {/* Primary Solar Corona Glow */}
       <mesh ref={coronaRef} renderOrder={2}>
-        <sphereGeometry args={[SUN_DATA.radius * 1.18, 32, 32]} />
+        <sphereGeometry args={[SUN_DATA.radius * 1.18, 24, 24]} />
         <meshBasicMaterial
           color={hovered ? '#ffaa00' : '#ff7700'}
           transparent
@@ -98,7 +97,7 @@ export const Sun: React.FC<SunProps> = ({ onSelect, isSelected, isExploding, hid
 
       {/* Outer Atmosphere Flare */}
       <mesh ref={flareRef} renderOrder={3}>
-        <sphereGeometry args={[SUN_DATA.radius * 1.38, 32, 32]} />
+        <sphereGeometry args={[SUN_DATA.radius * 1.38, 24, 24]} />
         <meshBasicMaterial
           color="#ff3300"
           transparent

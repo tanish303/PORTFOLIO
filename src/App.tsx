@@ -698,7 +698,7 @@ export function App() {
           frameloop={activeExperience ? 'never' : 'always'}
           dpr={[1, Math.min(typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1, 1.35)]}
           camera={{ position: [0, 160, 195], fov: 45, near: 0.1, far: 2000 }}
-          gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
+          gl={{ antialias: false, alpha: false, powerPreference: 'high-performance', stencil: false, depth: true }}
         >
           <UniverseScene
             currentBody={currentBody}

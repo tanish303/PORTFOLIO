@@ -9,12 +9,13 @@ export function getProceduralTexture(type: string): THREE.CanvasTexture {
 
   const canvas = document.createElement('canvas');
   if (type === 'saturn_rings') {
-    canvas.width = 1024;
-    canvas.height = 1024;
+    canvas.width = 512;
+    canvas.height = 512;
   } else {
-    // High-definition 2048x1024 texture map for crisp, recognizable planetary surface details
-    canvas.width = 2048;
-    canvas.height = 1024;
+    // 1024x512 gives excellent quality at normal orbit viewing distances
+    // while using 4x less VRAM than 2048x1024
+    canvas.width = 1024;
+    canvas.height = 512;
   }
   const ctx = canvas.getContext('2d')!;
 
