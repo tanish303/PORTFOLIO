@@ -281,53 +281,117 @@ class SoundEngine {
     noise.start(now);
   }
 
-  // Play massive Supernova explosion
+  // Non-linear sigmoid saturation curve for cinematic explosive crunch
+  private makeDistortionCurve(amount: number = 25): Float32Array<ArrayBuffer> {
+    const k = amount;
+    const n_samples = 44100;
+    const buffer = new ArrayBuffer(n_samples * 4);
+    const curve = new Float32Array(buffer);
+    const deg = Math.PI / 180;
+    for (let i = 0; i < n_samples; ++i) {
+      const x = (i * 2) / n_samples - 1;
+      curve[i] = ((3 + k) * x * 20 * deg) / (Math.PI + k * Math.abs(x));
+    }
+    return curve;
+  }
+
+  // Play massive Supernova explosion - Deep, seismic, heavy cosmic explosion
   public playSupernova() {
     this.ensureContext();
     if (!this.ctx || !this.masterGain || this.isMuted) return;
 
-    const now = this.ctx.currentTime;
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
 
-    // Sub bass drop
+    const now = this.ctx.currentTime;
+    const duration = 5.5;
+
+    // 1. Heavy seismic sub-bass punch (triangle dropping from 120Hz to 22Hz)
     const subOsc = this.ctx.createOscillator();
     const subGain = this.ctx.createGain();
-    subOsc.type = 'sine';
-    subOsc.frequency.setValueAtTime(180, now);
-    subOsc.frequency.exponentialRampToValueAtTime(28, now + 1.8);
+    subOsc.type = 'triangle';
+    subOsc.frequency.setValueAtTime(120, now);
+    subOsc.frequency.exponentialRampToValueAtTime(22, now + 2.8);
 
-    subGain.gain.setValueAtTime(0.6, now);
-    subGain.gain.exponentialRampToValueAtTime(0.001, now + 2.5);
+    subGain.gain.setValueAtTime(0.95, now);
+    subGain.gain.exponentialRampToValueAtTime(0.001, now + 4.8);
 
     subOsc.connect(subGain);
     subGain.connect(this.masterGain);
     subOsc.start(now);
-    subOsc.stop(now + 2.6);
+    subOsc.stop(now + 5.0);
 
-    // Blast noise burst
-    const bufferSize = this.ctx.sampleRate * 2.5;
+    // 2. Secondary ultra-low sub boom (pure sine at 65Hz -> 18Hz for subwoofer vibration)
+    const subBass = this.ctx.createOscillator();
+    const subBassGain = this.ctx.createGain();
+    subBass.type = 'sine';
+    subBass.frequency.setValueAtTime(65, now);
+    subBass.frequency.exponentialRampToValueAtTime(18, now + 3.5);
+
+    subBassGain.gain.setValueAtTime(0.85, now);
+    subBassGain.gain.exponentialRampToValueAtTime(0.001, now + 4.5);
+
+    subBass.connect(subBassGain);
+    subBassGain.connect(this.masterGain);
+    subBass.start(now);
+    subBass.stop(now + 4.6);
+
+    // 3. Crushing detonation crunch with WaveShaper saturation (heavy explosive punch, NO treble slap)
+    const bufferSize = Math.floor(this.ctx.sampleRate * duration);
     const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
     const data = buffer.getChannelData(0);
+
+    // Dense low-frequency noise generator with exponential decay
+    let lastOut = 0.0;
     for (let i = 0; i < bufferSize; i++) {
-      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (this.ctx.sampleRate * 0.7));
+      const white = Math.random() * 2 - 1;
+      lastOut = (lastOut + 0.04 * white) / 1.04;
+      const decay = Math.exp(-i / (this.ctx.sampleRate * 1.8));
+      data[i] = (lastOut * 4.5 + (Math.random() * 2 - 1) * 0.3) * decay;
     }
 
     const noise = this.ctx.createBufferSource();
     noise.buffer = buffer;
 
+    // Steep lowpass filter - tight cutoff at 520Hz sweeping down to 45Hz (eliminates clapping/slapping sound!)
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(3000, now);
-    filter.frequency.exponentialRampToValueAtTime(80, now + 2.0);
+    filter.frequency.setValueAtTime(520, now);
+    filter.frequency.exponentialRampToValueAtTime(45, now + 3.8);
+    filter.Q.setValueAtTime(3.5, now); // Resonant low rumble
+
+    // Analog saturation distortion
+    const distortion = this.ctx.createWaveShaper();
+    distortion.curve = this.makeDistortionCurve(25);
+    distortion.oversample = '2x';
 
     const noiseGain = this.ctx.createGain();
-    noiseGain.gain.setValueAtTime(0.5, now);
-    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 2.4);
+    noiseGain.gain.setValueAtTime(0.9, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
     noise.connect(filter);
-    filter.connect(noiseGain);
+    filter.connect(distortion);
+    distortion.connect(noiseGain);
     noiseGain.connect(this.masterGain);
 
     noise.start(now);
+
+    // 4. Secondary rolling aftershock wave (delayed by 0.35s to feel like a rolling cosmic shockwave)
+    const aftershockOsc = this.ctx.createOscillator();
+    const aftershockGain = this.ctx.createGain();
+    aftershockOsc.type = 'sine';
+    aftershockOsc.frequency.setValueAtTime(80, now + 0.35);
+    aftershockOsc.frequency.exponentialRampToValueAtTime(26, now + 3.8);
+
+    aftershockGain.gain.setValueAtTime(0, now);
+    aftershockGain.gain.setValueAtTime(0.5, now + 0.35);
+    aftershockGain.gain.exponentialRampToValueAtTime(0.001, now + 4.0);
+
+    aftershockOsc.connect(aftershockGain);
+    aftershockGain.connect(this.masterGain);
+    aftershockOsc.start(now + 0.35);
+    aftershockOsc.stop(now + 4.2);
   }
 
   // Play atmospheric entry rush sound

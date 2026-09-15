@@ -9,9 +9,10 @@ interface SunProps {
   onSelect: (id: string) => void;
   isSelected: boolean;
   isExploding: boolean;
+  hideLabels?: boolean;
 }
 
-export const Sun: React.FC<SunProps> = ({ onSelect, isSelected, isExploding }) => {
+export const Sun: React.FC<SunProps> = ({ onSelect, isSelected, isExploding, hideLabels = false }) => {
   const sunMeshRef = useRef<THREE.Mesh>(null);
   const coronaRef = useRef<THREE.Mesh>(null);
   const flareRef = useRef<THREE.Mesh>(null);
@@ -38,17 +39,14 @@ export const Sun: React.FC<SunProps> = ({ onSelect, isSelected, isExploding }) =
     }
   });
 
-  if (isExploding) {
-    return null; // Exploding state is handled by SupernovaEffect component
-  }
 
   return (
     <group position={[0, 0, 0]}>
       {/* Central Sunlight Source */}
       <pointLight
-        color="#fffaf0"
-        intensity={7.0}
-        distance={650}
+        color={isExploding ? '#fff8e8' : '#fffaf0'}
+        intensity={isExploding ? 22.0 : 7.0}
+        distance={isExploding ? 1200 : 650}
         decay={0.35}
       />
       {/* Cinematic Space Ambient & Soft Starlight Bounce */}
@@ -78,7 +76,7 @@ export const Sun: React.FC<SunProps> = ({ onSelect, isSelected, isExploding }) =
         <sphereGeometry args={[SUN_DATA.radius, 48, 48]} />
         <meshBasicMaterial
           map={texture}
-          color={hovered || isSelected ? '#fff0c2' : '#ffffff'}
+          color={isExploding ? '#ffffff' : hovered || isSelected ? '#fff0c2' : '#ffffff'}
           depthTest={true}
           depthWrite={true}
         />
@@ -112,47 +110,49 @@ export const Sun: React.FC<SunProps> = ({ onSelect, isSelected, isExploding }) =
         />
       </mesh>
 
-      {/* Floating 3D Label */}
-      <Html
-        position={[0, SUN_DATA.radius + 3.8, 0]}
-        center
-        distanceFactor={88}
-        zIndexRange={[100, 0]}
-      >
-        <div
-          className="planet-label-container"
-          onClick={(e) => {
-            e.stopPropagation();
-            onSelect(SUN_DATA.id);
-          }}
-          onMouseEnter={() => setHovered(true)}
-          onMouseLeave={() => setHovered(false)}
+      {/* Floating 3D Label - hidden during supernova blast */}
+      {!isExploding && !hideLabels && (
+        <Html
+          position={[0, SUN_DATA.radius + 3.8, 0]}
+          center
+          distanceFactor={88}
+          zIndexRange={[100, 0]}
         >
           <div
-            className={`planet-label-badge ${isSelected ? 'active' : ''} ${
-              hovered ? 'hovered' : ''
-            }`}
-            style={{
-              borderColor: hovered ? '#ffaa00' : 'rgba(255, 170, 0, 0.4)',
-              boxShadow: hovered ? '0 0 25px rgba(255, 120, 0, 0.7)' : undefined,
+            className="planet-label-container"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect(SUN_DATA.id);
             }}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
           >
             <div
-              className="planet-label-dot"
-              style={{ background: '#ffaa00', boxShadow: '0 0 8px #ffaa00' }}
+              className={`planet-label-badge ${isSelected ? 'active' : ''} ${
+                hovered ? 'hovered' : ''
+              }`}
+              style={{
+                borderColor: hovered ? '#ffaa00' : 'rgba(255, 170, 0, 0.4)',
+                boxShadow: hovered ? '0 0 25px rgba(255, 120, 0, 0.7)' : undefined,
+              }}
+            >
+              <div
+                className="planet-label-dot"
+                style={{ background: '#ffaa00', boxShadow: '0 0 8px #ffaa00' }}
+              />
+              <span className="planet-label-text" style={{ color: '#fff' }}>
+                SUN
+              </span>
+            </div>
+            <div
+              className="planet-label-stem"
+              style={{
+                background: 'linear-gradient(to bottom, #ffaa00, transparent)',
+              }}
             />
-            <span className="planet-label-text" style={{ color: '#fff' }}>
-              SUN
-            </span>
           </div>
-          <div
-            className="planet-label-stem"
-            style={{
-              background: 'linear-gradient(to bottom, #ffaa00, transparent)',
-            }}
-          />
-        </div>
-      </Html>
+        </Html>
+      )}
     </group>
   );
 };

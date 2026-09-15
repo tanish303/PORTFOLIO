@@ -8,19 +8,21 @@ import { getProceduralTexture } from '../../utils/textureGenerator';
 
 interface PlanetProps {
   data: CelestialBodyData;
-  elapsedTime: number;
+  elapsedTime?: number;
   onSelect: (id: string) => void;
   isSelected: boolean;
   isCurrentLocation: boolean;
+  hideLabels?: boolean;
   onPositionUpdate?: (id: string, pos: [number, number, number]) => void;
 }
 
 export const Planet: React.FC<PlanetProps> = ({
   data,
-  elapsedTime,
+  elapsedTime: _elapsedTime = 0,
   onSelect,
   isSelected,
   isCurrentLocation,
+  hideLabels = false,
   onPositionUpdate,
 }) => {
   const groupRef = useRef<THREE.Group>(null);
@@ -60,9 +62,10 @@ export const Planet: React.FC<PlanetProps> = ({
     return line;
   }, [orbitPoints, data.color, data.id, data.orbitRadius, hovered, isSelected]);
 
-  useFrame((_, delta) => {
-    // Current orbital position
-    const [x, y, z] = calculateOrbitalPosition(data, elapsedTime);
+  useFrame((state, delta) => {
+    // Current orbital position directly from clock
+    const t = state.clock.getElapsedTime();
+    const [x, y, z] = calculateOrbitalPosition(data, t);
     if (groupRef.current) {
       groupRef.current.position.set(x, y, z);
     }
@@ -103,8 +106,8 @@ export const Planet: React.FC<PlanetProps> = ({
 
   return (
     <>
-      {/* Orbital Path Line */}
-      <primitive object={orbitLine} />
+      {/* Orbital Path Line - hidden during supernova blast */}
+      {!hideLabels && <primitive object={orbitLine} />}
 
       {/* Planet Group at Orbital Position */}
       <group ref={groupRef}>
@@ -213,86 +216,88 @@ export const Planet: React.FC<PlanetProps> = ({
           )}
         </group>
 
-        {/* Floating 3D Label or YOU ARE HERE Marker */}
-        <Html
-          position={[0, labelHeight, 0]}
-          center
-          distanceFactor={labelDistanceFactor}
-          zIndexRange={[100, 0]}
-        >
-          {isCurrentLocation ? (
-            <div
-              className="planet-label-container"
-              onClick={(e) => {
-                e.stopPropagation();
-                onSelect(data.id);
-              }}
-              style={{ pointerEvents: 'auto', cursor: 'pointer' }}
-            >
+        {/* Floating 3D Label or YOU ARE HERE Marker - hidden during supernova blast */}
+        {!hideLabels && (
+          <Html
+            position={[0, labelHeight, 0]}
+            center
+            distanceFactor={labelDistanceFactor}
+            zIndexRange={[100, 0]}
+          >
+            {isCurrentLocation ? (
               <div
-                className="planet-label-badge active"
-                style={{
-                  borderColor: '#00ffaa',
-                  background: 'rgba(0, 255, 170, 0.22)',
-                  boxShadow: '0 0 20px rgba(0, 255, 170, 0.6)',
+                className="planet-label-container"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelect(data.id);
                 }}
+                style={{ pointerEvents: 'auto', cursor: 'pointer' }}
               >
                 <div
-                  className="planet-label-dot"
-                  style={{ background: '#00ffaa', boxShadow: '0 0 8px #00ffaa' }}
-                />
-                <span className="planet-label-text" style={{ color: '#a7f3d0' }}>
-                  YOU ARE HERE
-                </span>
-              </div>
-              <div
-                className="planet-label-stem"
-                style={{
-                  background: 'linear-gradient(to bottom, #00ffaa, transparent)',
-                }}
-              />
-            </div>
-          ) : (
-            <div
-              className="planet-label-container"
-              onClick={(e) => {
-                e.stopPropagation();
-                onSelect(data.id);
-              }}
-              onMouseEnter={() => setHovered(true)}
-              onMouseLeave={() => setHovered(false)}
-            >
-              <div
-                className={`planet-label-badge ${isSelected ? 'active' : ''} ${
-                  hovered ? 'hovered' : ''
-                }`}
-                style={{
-                  borderColor: hovered ? '#ffffff' : isSelected ? data.color : `${data.color}66`,
-                  boxShadow: hovered
-                    ? `0 0 25px ${data.color}`
-                    : isSelected
-                    ? `0 0 15px ${data.color}88`
-                    : undefined,
-                }}
-              >
-                <div
-                  className="planet-label-dot"
+                  className="planet-label-badge active"
                   style={{
-                    background: data.color,
-                    boxShadow: `0 0 8px ${data.color}`,
+                    borderColor: '#00ffaa',
+                    background: 'rgba(0, 255, 170, 0.22)',
+                    boxShadow: '0 0 20px rgba(0, 255, 170, 0.6)',
+                  }}
+                >
+                  <div
+                    className="planet-label-dot"
+                    style={{ background: '#00ffaa', boxShadow: '0 0 8px #00ffaa' }}
+                  />
+                  <span className="planet-label-text" style={{ color: '#a7f3d0' }}>
+                    YOU ARE HERE
+                  </span>
+                </div>
+                <div
+                  className="planet-label-stem"
+                  style={{
+                    background: 'linear-gradient(to bottom, #00ffaa, transparent)',
                   }}
                 />
-                <span className="planet-label-text">{data.label}</span>
               </div>
+            ) : (
               <div
-                className="planet-label-stem"
-                style={{
-                  background: `linear-gradient(to bottom, ${data.color}aa, transparent)`,
+                className="planet-label-container"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelect(data.id);
                 }}
-              />
-            </div>
-          )}
-        </Html>
+                onMouseEnter={() => setHovered(true)}
+                onMouseLeave={() => setHovered(false)}
+              >
+                <div
+                  className={`planet-label-badge ${isSelected ? 'active' : ''} ${
+                    hovered ? 'hovered' : ''
+                  }`}
+                  style={{
+                    borderColor: hovered ? '#ffffff' : isSelected ? data.color : `${data.color}66`,
+                    boxShadow: hovered
+                      ? `0 0 25px ${data.color}`
+                      : isSelected
+                      ? `0 0 15px ${data.color}88`
+                      : undefined,
+                  }}
+                >
+                  <div
+                    className="planet-label-dot"
+                    style={{
+                      background: data.color,
+                      boxShadow: `0 0 8px ${data.color}`,
+                    }}
+                  />
+                  <span className="planet-label-text">{data.label}</span>
+                </div>
+                <div
+                  className="planet-label-stem"
+                  style={{
+                    background: `linear-gradient(to bottom, ${data.color}aa, transparent)`,
+                  }}
+                />
+              </div>
+            )}
+          </Html>
+        )}
       </group>
     </>
   );

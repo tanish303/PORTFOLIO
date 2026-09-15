@@ -6,18 +6,20 @@ import { EARTH_DATA, calculateOrbitalPosition } from '../../data/planets';
 import { getProceduralTexture } from '../../utils/textureGenerator';
 
 interface EarthProps {
-  elapsedTime: number;
+  elapsedTime?: number;
   onSelect: (id: string) => void;
   isSelected: boolean;
   isCurrentLocation: boolean;
+  hideLabels?: boolean;
   onPositionUpdate?: (pos: [number, number, number]) => void;
 }
 
 export const Earth: React.FC<EarthProps> = ({
-  elapsedTime,
+  elapsedTime: _elapsedTime = 0,
   onSelect,
   isSelected,
   isCurrentLocation,
+  hideLabels = false,
   onPositionUpdate,
 }) => {
   const groupRef = useRef<THREE.Group>(null);
@@ -43,17 +45,20 @@ export const Earth: React.FC<EarthProps> = ({
   const orbitLine = useMemo(() => {
     const geom = new THREE.BufferGeometry().setFromPoints(orbitPoints);
     const mat = new THREE.LineBasicMaterial({
-      color: 0x00ffaa,
+      color: '#00ffaa',
       transparent: true,
-      opacity: hovered || isSelected ? 0.45 : 0.15,
+      opacity: hovered || isSelected ? 0.65 : 0.22,
       blending: THREE.AdditiveBlending,
+      depthTest: true,
+      depthWrite: false,
     });
     return new THREE.Line(geom, mat);
   }, [orbitPoints, hovered, isSelected]);
 
-  useFrame((_, delta) => {
-    // Current orbital position
-    const [x, y, z] = calculateOrbitalPosition(EARTH_DATA, elapsedTime);
+  useFrame((state, delta) => {
+    // Current orbital position directly from clock
+    const t = state.clock.getElapsedTime();
+    const [x, y, z] = calculateOrbitalPosition(EARTH_DATA, t);
     if (groupRef.current) {
       groupRef.current.position.set(x, y, z);
     }
@@ -73,8 +78,8 @@ export const Earth: React.FC<EarthProps> = ({
 
   return (
     <>
-      {/* Faint Orbital Path Ring */}
-      <primitive object={orbitLine} />
+      {/* Faint Orbital Path Ring - hidden during supernova blast */}
+      {!hideLabels && <primitive object={orbitLine} />}
 
       {/* Earth Group */}
       <group ref={groupRef}>
@@ -152,79 +157,81 @@ export const Earth: React.FC<EarthProps> = ({
           />
         </mesh>
 
-        {/* YOU ARE HERE Marker or Planet Label */}
-        <Html
-          position={[0, EARTH_DATA.radius + 3.8, 0]}
-          center
-          distanceFactor={120}
-          zIndexRange={[100, 0]}
-        >
-          {isCurrentLocation ? (
-            <div
-              className="planet-label-container"
-              onClick={(e) => {
-                e.stopPropagation();
-                onSelect(EARTH_DATA.id);
-              }}
-              style={{ pointerEvents: 'auto', cursor: 'pointer' }}
-            >
+        {/* YOU ARE HERE Marker or Planet Label - hidden during supernova blast */}
+        {!hideLabels && (
+          <Html
+            position={[0, EARTH_DATA.radius + 3.8, 0]}
+            center
+            distanceFactor={120}
+            zIndexRange={[100, 0]}
+          >
+            {isCurrentLocation ? (
               <div
-                className="planet-label-badge active"
-                style={{
-                  borderColor: '#00ffaa',
-                  background: 'rgba(0, 255, 170, 0.22)',
-                  boxShadow: '0 0 20px rgba(0, 255, 170, 0.6)',
+                className="planet-label-container"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelect(EARTH_DATA.id);
                 }}
+                style={{ pointerEvents: 'auto', cursor: 'pointer' }}
               >
                 <div
-                  className="planet-label-dot"
-                  style={{ background: '#00ffaa', boxShadow: '0 0 8px #00ffaa' }}
+                  className="planet-label-badge active"
+                  style={{
+                    borderColor: '#00ffaa',
+                    background: 'rgba(0, 255, 170, 0.22)',
+                    boxShadow: '0 0 20px rgba(0, 255, 170, 0.6)',
+                  }}
+                >
+                  <div
+                    className="planet-label-dot"
+                    style={{ background: '#00ffaa', boxShadow: '0 0 8px #00ffaa' }}
+                  />
+                  <span className="planet-label-text" style={{ color: '#a7f3d0' }}>
+                    YOU ARE HERE
+                  </span>
+                </div>
+                <div
+                  className="planet-label-stem"
+                  style={{
+                    background: 'linear-gradient(to bottom, #00ffaa, transparent)',
+                  }}
                 />
-                <span className="planet-label-text" style={{ color: '#a7f3d0' }}>
-                  YOU ARE HERE
-                </span>
               </div>
+            ) : (
               <div
-                className="planet-label-stem"
-                style={{
-                  background: 'linear-gradient(to bottom, #00ffaa, transparent)',
+                className="planet-label-container"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelect(EARTH_DATA.id);
                 }}
-              />
-            </div>
-          ) : (
-            <div
-              className="planet-label-container"
-              onClick={(e) => {
-                e.stopPropagation();
-                onSelect(EARTH_DATA.id);
-              }}
-              onMouseEnter={() => setHovered(true)}
-              onMouseLeave={() => setHovered(false)}
-            >
-              <div
-                className={`planet-label-badge ${isSelected ? 'active' : ''} ${
-                  hovered ? 'hovered' : ''
-                }`}
-                style={{
-                  borderColor: hovered ? '#00ffaa' : 'rgba(0, 255, 170, 0.4)',
-                  boxShadow: hovered ? '0 0 20px rgba(0, 255, 170, 0.6)' : undefined,
-                }}
+                onMouseEnter={() => setHovered(true)}
+                onMouseLeave={() => setHovered(false)}
               >
                 <div
-                  className="planet-label-dot"
-                  style={{ background: '#00ffaa', boxShadow: '0 0 8px #00ffaa' }}
+                  className={`planet-label-badge ${isSelected ? 'active' : ''} ${
+                    hovered ? 'hovered' : ''
+                  }`}
+                  style={{
+                    borderColor: hovered ? '#00ffaa' : 'rgba(0, 255, 170, 0.4)',
+                    boxShadow: hovered ? '0 0 20px rgba(0, 255, 170, 0.6)' : undefined,
+                  }}
+                >
+                  <div
+                    className="planet-label-dot"
+                    style={{ background: '#00ffaa', boxShadow: '0 0 8px #00ffaa' }}
+                  />
+                  <span className="planet-label-text">EARTH</span>
+                </div>
+                <div
+                  className="planet-label-stem"
+                  style={{
+                    background: 'linear-gradient(to bottom, #00ffaa, transparent)',
+                  }}
                 />
-                <span className="planet-label-text">EARTH</span>
               </div>
-              <div
-                className="planet-label-stem"
-                style={{
-                  background: 'linear-gradient(to bottom, #00ffaa, transparent)',
-                }}
-              />
-            </div>
-          )}
-        </Html>
+            )}
+          </Html>
+        )}
       </group>
     </>
   );

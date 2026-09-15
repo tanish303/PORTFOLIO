@@ -15,6 +15,7 @@ import {
   EARTH_DATA,
   SECTION_PLANETS,
   calculateOrbitalPosition,
+  getSectorPath,
 } from './data/planets';
 import type { CelestialBodyData, FlightPhase, FlightStatus } from './types/solar';
 import { soundController } from './audio/SoundController';
@@ -36,6 +37,8 @@ interface UniverseSceneProps {
   isFlying: boolean;
   isOverview: boolean;
   supernovaProgress: number;
+  supernovaOrigin: [number, number, number];
+  isSupernovaActive: boolean;
   onSelectDestination: (id: string) => void;
   onRocketWorldPosUpdate: (pos: THREE.Vector3, dir: THREE.Vector3, speed: number) => void;
   onFrameUpdate: (elapsedTime: number, delta: number) => void;
@@ -53,22 +56,19 @@ const UniverseScene: React.FC<UniverseSceneProps> = ({
   isFlying,
   isOverview,
   supernovaProgress,
+  supernovaOrigin,
+  isSupernovaActive,
   onSelectDestination,
   onRocketWorldPosUpdate,
   onFrameUpdate,
 }) => {
-  const [elapsedTime, setElapsedTime] = useState(0);
-  const lastStateUpdate = useRef(0);
+  const timeRef = useRef(0);
   const rocketWorldPos = useRef(new THREE.Vector3(...currentRocketPos));
   const rocketWorldDir = useRef(new THREE.Vector3(0, 1, 0));
 
   useFrame((state, delta) => {
-    const t = state.clock.getElapsedTime();
-    if (t - lastStateUpdate.current > 0.04) {
-      lastStateUpdate.current = t;
-      setElapsedTime(t);
-    }
-    onFrameUpdate(t, delta);
+    timeRef.current = state.clock.getElapsedTime();
+    onFrameUpdate(timeRef.current, delta);
   });
 
   const handleRocketPosBroadcast = useCallback(
@@ -80,17 +80,12 @@ const UniverseScene: React.FC<UniverseSceneProps> = ({
     [onRocketWorldPosUpdate]
   );
 
-  const currentBodyPos = useMemo(() => {
-    return calculateOrbitalPosition(currentBody, elapsedTime);
-  }, [currentBody, elapsedTime]);
-
-  const targetBodyPos = useMemo(() => {
-    return targetBody ? calculateOrbitalPosition(targetBody, elapsedTime) : null;
-  }, [targetBody, elapsedTime]);
+  const currentBodyPos = calculateOrbitalPosition(currentBody, timeRef.current);
+  const targetBodyPos = targetBody ? calculateOrbitalPosition(targetBody, timeRef.current) : null;
 
   return (
     <>
-      {/* Deep Space Starfield & Subtle Glowing Stars */}
+      {/* Background Starfield */}
       <SpaceBackground />
 
       {/* Realistic Rocky Asteroids drifting through solar system */}
@@ -110,6 +105,8 @@ const UniverseScene: React.FC<UniverseSceneProps> = ({
         flightPhase={flightPhase}
         phaseProgress={phaseProgress}
         isOverview={isOverview}
+        flightStatus={flightStatus}
+        supernovaProgress={supernovaProgress}
       />
 
       {/* Sun: Glowing solar surface with corona and sunlight */}
@@ -117,23 +114,25 @@ const UniverseScene: React.FC<UniverseSceneProps> = ({
         onSelect={onSelectDestination}
         isSelected={targetBody?.id === 'sun'}
         isExploding={flightStatus === 'SUPERNOVA_EXPLODING'}
+        hideLabels={isSupernovaActive}
       />
 
-      {/* Supernova Detonation Effect on Sun Collision */}
+      {/* Supernova Detonation Effect on Sun Collision - Colossal expanding multi-ring shockwaves */}
       <SupernovaEffect
         active={
           flightStatus === 'SUPERNOVA_EXPLODING' ||
           flightStatus === 'SUPERNOVA_RESETTING'
         }
         progress={supernovaProgress}
+        origin={supernovaOrigin}
       />
 
       {/* Earth: Terra Base with pulsing YOU ARE HERE marker */}
       <Earth
-        elapsedTime={elapsedTime}
         onSelect={onSelectDestination}
         isSelected={targetBody?.id === 'earth'}
         isCurrentLocation={currentBody.id === 'earth'}
+        hideLabels={isSupernovaActive}
       />
 
       {/* All Orbiting Section Planets */}
@@ -141,21 +140,25 @@ const UniverseScene: React.FC<UniverseSceneProps> = ({
         <Planet
           key={planet.id}
           data={planet}
-          elapsedTime={elapsedTime}
           onSelect={onSelectDestination}
           isSelected={targetBody?.id === planet.id}
           isCurrentLocation={currentBody.id === planet.id}
+          hideLabels={isSupernovaActive}
         />
       ))}
 
-      {/* Interplanetary Rocket with forward nose orientation & thruster trail */}
+      {/* Interplanetary Rocket - Vaporized & completely hidden during blast & supernova */}
       <Rocket
         currentPos={currentRocketPos}
         travelVelocity={currentRocketVel}
         flightProgress={flightProgress}
         flightPhase={flightPhase}
         isFlying={isFlying}
-        visible={isFlying || isOverview}
+        visible={
+          (isFlying || isOverview) &&
+          flightStatus !== 'SUPERNOVA_EXPLODING' &&
+          flightStatus !== 'SUPERNOVA_RESETTING'
+        }
         onRocketWorldPosUpdate={handleRocketPosBroadcast}
       />
     </>
@@ -185,6 +188,7 @@ export function App() {
   const [flightProgress, setFlightProgress] = useState(0);
   const [currentSpeedKmS, setCurrentSpeedKmS] = useState(7.8);
   const [supernovaProgress, setSupernovaProgress] = useState(0);
+  const [supernovaOrigin, setSupernovaOrigin] = useState<[number, number, number]>([0, 0, 0]);
 
   // Trajectory tracking references
   const elapsedTimeRef = useRef<number>(0);
@@ -227,7 +231,7 @@ export function App() {
   } | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
 
-  const showTechnicalToast = useCallback((title: string, subtitle: string) => {
+  const showTechnicalToast = useCallback((title: string, subtitle: string = '') => {
     if (toastTimeoutRef.current) {
       clearTimeout(toastTimeoutRef.current);
     }
@@ -245,12 +249,12 @@ export function App() {
       // When clicking the current planet:
       if (id === currentBodyId || (activeExperience && id === activeExperience)) {
         if (activeExperience) {
-          // 1. Inside planet: show red technical toast
+          // 1. Inside planet: show simplified red alert toast
           soundController.playTargetLock();
           const activeBody = ALL_CELESTIAL_BODIES.find((b) => b.id === (activeExperience || id)) || currentBody;
           showTechnicalToast(
-            `SECTOR SCAN LOCKED // ALREADY VIEWING ${activeBody.name.toUpperCase()}`,
-            'ACTIVE PLANETARY SURFACE • SELECT ALTERNATE DESTINATION TO LAUNCH'
+            `Already on ${getSectorPath(activeBody.id)}!`,
+            ''
           );
           return;
         } else {
@@ -287,7 +291,7 @@ export function App() {
 
       soundController.playTargetLock();
       setTargetBodyId(id);
-      const tFocus = isOverview ? 1.4 : 0.9;
+      const tFocus = 0.35; // Snappy, dynamic departure focus
       focusDuration.current = tFocus;
       setIsOverview(false); // Smoothly stop overview mode, focus on current departure planet
 
@@ -295,8 +299,9 @@ export function App() {
       phaseStartTime.current = now;
 
       // 1. Current departure planet position
+      const simTime = elapsedTimeRef.current > 0 ? elapsedTimeRef.current : now * 0.15;
       const currentPlanetCenter = new THREE.Vector3(
-        ...calculateOrbitalPosition(currentBody, elapsedTimeRef.current)
+        ...calculateOrbitalPosition(currentBody, simTime)
       );
 
       // 2. Compute outward vertical launch direction strictly from surface perch:
@@ -321,7 +326,7 @@ export function App() {
       launchClearancePos.current = currentPlanetCenter.clone().addScaledVector(outDir, clearanceDist);
 
       // 5. Initial distance to target for flight progress HUD
-      const estTargetPos = new THREE.Vector3(...calculateOrbitalPosition(target, elapsedTimeRef.current));
+      const estTargetPos = new THREE.Vector3(...calculateOrbitalPosition(target, simTime));
       initialDistToTarget.current = Math.max(10, surfacePos.distanceTo(estTargetPos));
 
       // 6. Begin Phase 1: FOCUS_DEPARTURE
@@ -367,10 +372,10 @@ export function App() {
       elapsedTimeRef.current = elapsedTime;
       const dt = Math.min(delta, 0.05);
 
-      // 1. SUPERNOVA DETONATION
+      // 1. SUPERNOVA DETONATION (Slow, colossal expansion over ~5.5 seconds)
       if (flightStatus === 'SUPERNOVA_EXPLODING') {
         setSupernovaProgress((prev) => {
-          const next = prev + delta * 0.45;
+          const next = prev + dt * 0.18;
           if (next >= 1.0) {
             setFlightStatus('SUPERNOVA_RESETTING');
             return 1.0;
@@ -380,10 +385,10 @@ export function App() {
         return;
       }
 
-      // 2. SUPERNOVA QUANTUM REBIRTH RESET
+      // 2. SUPERNOVA QUANTUM REBIRTH RESET (Smooth cosmic collapse over ~3.5 seconds)
       if (flightStatus === 'SUPERNOVA_RESETTING') {
         setSupernovaProgress((prev) => {
-          const next = prev - delta * 0.55;
+          const next = prev - dt * 0.28;
           if (next <= 0) {
             setCurrentBodyId('earth');
             setTargetBodyId(null);
@@ -443,7 +448,7 @@ export function App() {
           }
 
           case 'HOLD_DEPARTURE': {
-            const dur = 0.7;
+            const dur = 0.25;
             const p = THREE.MathUtils.clamp(tInPhase / dur, 0, 1);
             phaseP = p;
 
@@ -462,7 +467,7 @@ export function App() {
           }
 
           case 'VERTICAL_ASCENT': {
-            const dur = 1.2;
+            const dur = 0.55;
             const p = THREE.MathUtils.clamp(tInPhase / dur, 0, 1);
             phaseP = p;
 
@@ -490,7 +495,7 @@ export function App() {
           }
 
           case 'TRANSITION_TURN': {
-            const dur = 1.0;
+            const dur = 0.45;
             const p = THREE.MathUtils.clamp(tInPhase / dur, 0, 1);
             phaseP = p;
 
@@ -539,7 +544,7 @@ export function App() {
             }
 
             // Velocity-based movement: velocity = desiredDirection * speed; position += velocity * delta
-            const cruiseSpeed = THREE.MathUtils.clamp(distToTarget * 1.5, 60.0, 95.0);
+            const cruiseSpeed = THREE.MathUtils.clamp(distToTarget * 1.8, 75.0, 115.0);
             const velocity = cruiseDir.clone().multiplyScalar(cruiseSpeed);
             rocketSimVel.current.copy(velocity);
             rocketSimPos.current.addScaledVector(velocity, dt);
@@ -581,7 +586,11 @@ export function App() {
             }
 
             // Touchdown condition: rocket physically meets destination surface
-            const isTouchdown = remaining <= 0.45 || distToTarget <= surfaceContactDist + 0.35 || tInPhase > 1.8;
+            // For Sun: detonate early while plunging into the scorching solar corona (before physical surface impact!)
+            const isSunTarget = targetBody.id === 'sun';
+            const isTouchdown = isSunTarget
+              ? remaining <= 4.2 || distToTarget <= targetBody.radius + 4.5 || tInPhase > 2.5
+              : remaining <= 0.65 || distToTarget <= surfaceContactDist + 0.55 || tInPhase > 7.0;
 
             if (isTouchdown) {
               let outwardNormal = rocketSimPos.current.clone().sub(liveTarget);
@@ -596,7 +605,10 @@ export function App() {
               rocketSimVel.current.copy(outwardNormal);
 
               if (targetBody.id === 'sun') {
+                // Blast origin: exactly where the rocket detonates before reaching the surface
+                setSupernovaOrigin([rocketSimPos.current.x, rocketSimPos.current.y, rocketSimPos.current.z]);
                 setFlightStatus('SUPERNOVA_EXPLODING');
+                setFlightPhase('IDLE');
                 setSupernovaProgress(0);
                 soundController.playSupernova();
               } else {
@@ -634,7 +646,7 @@ export function App() {
               setCurrentSpeedKmS(7.8);
             } else {
               // Smooth deceleration towards surface with closing speed against orbiting body
-              const approachSpeed = THREE.MathUtils.clamp(remaining * 5.2 + 8.0, 14.0, 48.0);
+              const approachSpeed = THREE.MathUtils.clamp(remaining * 6.5 + 16.0, 18.0, 58.0);
               const velocity = approachDir.clone().multiplyScalar(approachSpeed);
               rocketSimVel.current.copy(velocity);
               rocketSimPos.current.addScaledVector(velocity, dt);
@@ -675,13 +687,16 @@ export function App() {
     []
   );
 
+  const isSupernovaActive =
+    flightStatus === 'SUPERNOVA_EXPLODING' || flightStatus === 'SUPERNOVA_RESETTING';
+
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden' }}>
       {/* 3D WebGL Canvas */}
-      <div className="canvas-container">
+      <div className={`canvas-container ${isSupernovaActive ? 'supernova-exploding-active' : ''}`}>
         <Canvas
           frameloop={activeExperience ? 'never' : 'always'}
-          dpr={[1, 1.5]}
+          dpr={[1, Math.min(typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1, 1.35)]}
           camera={{ position: [0, 160, 195], fov: 45, near: 0.1, far: 2000 }}
           gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
         >
@@ -696,7 +711,9 @@ export function App() {
             currentRocketVel={currentRocketVel.current}
             isFlying={isFlying}
             isOverview={isOverview}
+            isSupernovaActive={isSupernovaActive}
             supernovaProgress={supernovaProgress}
+            supernovaOrigin={supernovaOrigin}
             onSelectDestination={handleSelectDestination}
             onRocketWorldPosUpdate={handleRocketWorldPosUpdate}
             onFrameUpdate={handleFrameUpdate}
@@ -776,7 +793,9 @@ export function App() {
             <div className="technical-alert-icon">⚠</div>
             <div className="technical-alert-content">
               <div className="technical-alert-title">{technicalToast.title}</div>
-              <div className="technical-alert-sub">{technicalToast.subtitle}</div>
+              {technicalToast.subtitle ? (
+                <div className="technical-alert-sub">{technicalToast.subtitle}</div>
+              ) : null}
             </div>
           </div>
         </div>

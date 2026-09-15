@@ -19,6 +19,8 @@ export interface RetrievedChunk {
 
 const CACHE_FILE_PATH = path.resolve(process.cwd(), 'server/rag/embeddings-cache.json');
 
+const CURRENT_CACHE_VERSION = '2.0';
+
 let inMemoryVectors: Map<string, number[]> = new Map();
 let isInitialized = false;
 
@@ -83,14 +85,17 @@ export async function initializeRAG(geminiApiKey?: string): Promise<void> {
     try {
       const raw = fs.readFileSync(CACHE_FILE_PATH, 'utf-8');
       const parsed: EmbeddingsCacheFile = JSON.parse(raw);
-      if (parsed.chunks && Array.isArray(parsed.chunks)) {
+      if (parsed.version === CURRENT_CACHE_VERSION && parsed.chunks && Array.isArray(parsed.chunks)) {
         for (const item of parsed.chunks) {
           if (item.id && Array.isArray(item.vector)) {
             inMemoryVectors.set(item.id, item.vector);
           }
         }
+        console.log(`[RAG] Loaded ${inMemoryVectors.size} cached vector embeddings from disk (v${CURRENT_CACHE_VERSION}).`);
+      } else {
+        console.log('[RAG] Cache version mismatch or outdated cache. Refreshing embeddings...');
+        inMemoryVectors.clear();
       }
-      console.log(`[RAG] Loaded ${inMemoryVectors.size} cached vector embeddings from disk.`);
     } catch (e) {
       console.warn('[RAG] Could not read embeddings cache file, will regenerate:', e);
     }
@@ -119,11 +124,11 @@ export async function initializeRAG(geminiApiKey?: string): Promise<void> {
           fs.mkdirSync(dir, { recursive: true });
         }
         const cacheData: EmbeddingsCacheFile = {
-          version: '1.0',
+          version: CURRENT_CACHE_VERSION,
           chunks: Array.from(inMemoryVectors.entries()).map(([id, vector]) => ({ id, vector })),
         };
         fs.writeFileSync(CACHE_FILE_PATH, JSON.stringify(cacheData), 'utf-8');
-        console.log(`[RAG] Saved ${inMemoryVectors.size} vector embeddings to cache.`);
+        console.log(`[RAG] Saved ${inMemoryVectors.size} vector embeddings to cache (v${CURRENT_CACHE_VERSION}).`);
       } catch (err) {
         console.error('[RAG] Failed to write embeddings cache:', err);
       }
@@ -160,14 +165,21 @@ function computeKeywordScore(query: string, chunk: KnowledgeChunk): number {
   // Exact entity boosts
   if (q.includes('tweniq') && chunk.id === 'project-tweniq') score += 5;
   if (q.includes('copywizz') && chunk.id === 'project-copywizz') score += 5;
-  if (q.includes('cloudtechner') && chunk.id === 'experience-cloudtechner') score += 5;
-  if (q.includes('adayptus') && chunk.id === 'experience-adayptus') score += 5;
-  if (q.includes('coding blocks') && chunk.id === 'experience-codingblocks') score += 5;
+  if (q.includes('cloudtechner') && chunk.id === 'experience-cloudtechner') score += 12;
+  if (q.includes('adayptus') && chunk.id === 'experience-adayptus') score += 6;
+  if (q.includes('coding blocks') && chunk.id === 'experience-codingblocks') score += 6;
   if ((q.includes('who is') || q.includes('about')) && chunk.id === 'about-identity') score += 4;
   if (q.includes('skill') && chunk.id === 'skills-technical') score += 4;
   if ((q.includes('college') || q.includes('degree') || q.includes('education')) && chunk.id === 'education-academics') score += 4;
   if ((q.includes('contact') || q.includes('email') || q.includes('phone') || q.includes('linkedin')) && chunk.id === 'contact-socials') score += 4;
   if (q.includes('why hire') && chunk.id === 'why-hire-tanish') score += 4;
+
+  // General experience/internship query boost: CloudTechner is MAIN and MUST be ranked highest
+  if (q.includes('experience') || q.includes('internship') || q.includes('work') || q.includes('job') || q.includes('company') || q.includes('companies')) {
+    if (chunk.id === 'experience-cloudtechner') score += 10;
+    else if (chunk.id === 'experience-adayptus') score += 4;
+    else if (chunk.id === 'experience-codingblocks') score += 2;
+  }
 
   return score;
 }
@@ -209,6 +221,22 @@ export async function retrieveRelevantChunks(
 
   // Sort descending by score
   scored.sort((a, b) => b.score - a.score);
+
+  // If query is asking about experience/internships, guarantee all experience chunks are retrieved with CloudTechner first
+  const isExperienceQuery = /experience|internship|work|companies|career/i.test(query);
+  if (isExperienceQuery) {
+    const expChunks = scored.filter((s) => s.chunk.category === 'experience');
+    // Ensure CloudTechner is strictly first among experience chunks
+    expChunks.sort((a, b) => {
+      if (a.chunk.id === 'experience-cloudtechner') return -1;
+      if (b.chunk.id === 'experience-cloudtechner') return 1;
+      if (a.chunk.id === 'experience-adayptus') return -1;
+      if (b.chunk.id === 'experience-adayptus') return 1;
+      return 0;
+    });
+    const nonExpChunks = scored.filter((s) => s.chunk.category !== 'experience');
+    return [...expChunks, ...nonExpChunks].slice(0, Math.max(topK, expChunks.length));
+  }
 
   // Return top K
   return scored.slice(0, topK);

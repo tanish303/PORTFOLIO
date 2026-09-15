@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Volume2, VolumeX, AlertTriangle } from 'lucide-react';
+import { Volume2, VolumeX } from 'lucide-react';
 import { soundController } from '../../audio/SoundController';
 import type { CelestialBodyData, FlightPhase, FlightStatus } from '../../types/solar';
 import { getLogicalFlightSpeed, getSectorPath } from '../../data/planets';
@@ -74,14 +74,6 @@ export const HUD: React.FC<HUDProps> = ({
           </button>
         </div>
       </div>
-
-      {/* Sun Critical Trajectory Warning Banner */}
-      {isSunTarget && (
-        <div className="sun-warning-banner">
-          <AlertTriangle size={18} color="#ff3344" />
-          <span>WARNING: SOLAR VECTOR LOCKED // CRITICAL HEAT FLUX DETECTED</span>
-        </div>
-      )}
 
       {/* Bottom Area: Telemetry, Navigation Dock & Non-clickable Instruction Banner */}
       <div className="hud-bottom-bar">

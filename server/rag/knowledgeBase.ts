@@ -44,16 +44,19 @@ Goals: In the short term, to build impactful production-grade distributed applic
   {
     id: 'experience-cloudtechner',
     category: 'experience',
-    title: 'Work Experience - CloudTechner Services Private Limited',
+    title: 'Work Experience - CloudTechner Services Private Limited (MAIN & PRIMARY INTERNSHIP)',
     keywords: [
       'cloudtechner', 'experience', 'internship', 'devops', 'backend engineer', 'cloud',
-      'docker', 'kubernetes', 'terraform', 'aws', 'jenkins', 'fastapi', 'python', 'ci/cd'
+      'docker', 'kubernetes', 'terraform', 'aws', 'jenkins', 'fastapi', 'python', 'ci/cd',
+      'main internship', 'primary internship', 'main experience', 'work experience'
     ],
-    content: `Company: CloudTechner Services Private Limited
+    content: `Company: CloudTechner Services Private Limited (MAIN & PRIMARY INTERNSHIP)
 Role: DevOps & Backend Engineer
+Status: Primary / Main Experience (Highest Priority)
 Type: Internship
 Duration: March 23, 2026 – September 21, 2026
 Location: Gurugram, India · Hybrid/Remote
+Significance: This is Tanish's MAIN, PRIMARY, and most impactful internship. It is his flagship professional experience, where he works on production cloud infrastructure, modern DevOps automation, and scalable backend services.
 Key Responsibilities & Contributions:
 • Trained and worked extensively with modern DevOps technologies: Docker, Kubernetes, Terraform, AWS, Jenkins, and GitHub Actions.
 • Developed robust backend services and scalable REST APIs utilizing Python and FastAPI.
@@ -64,13 +67,14 @@ Key Responsibilities & Contributions:
   {
     id: 'experience-adayptus',
     category: 'experience',
-    title: 'Work Experience - ADAYPTUS CONSULTING',
+    title: 'Work Experience - ADAYPTUS CONSULTING (Backend Internship)',
     keywords: [
-      'adayptus', 'consulting', 'backend developer', 'internship', 'node.js', 'express',
+      'adayptus', 'consulting', 'experience', 'backend developer', 'internship', 'node.js', 'express',
       'mongodb', 'queries', 'database optimization', 'smtp', 'email'
     ],
     content: `Company: ADAYPTUS CONSULTING
 Role: Backend Developer
+Status: Secondary Internship
 Type: Internship
 Duration: February 2026 – March 2026
 Location: Noida, India · Hybrid
@@ -83,13 +87,14 @@ Key Responsibilities & Contributions:
   {
     id: 'experience-codingblocks',
     category: 'experience',
-    title: 'Work Experience - CODINGBLOCKS',
+    title: 'Work Experience - CODINGBLOCKS (Full Stack Internship)',
     keywords: [
-      'codingblocks', 'coding blocks', 'full stack developer', 'internship', 'react', 'node.js',
+      'codingblocks', 'coding blocks', 'experience', 'full stack developer', 'internship', 'react', 'node.js',
       'tailwind', 'performance', 'components'
     ],
     content: `Company: CODINGBLOCKS
 Role: Full Stack Developer
+Status: Earlier Internship
 Type: Internship
 Duration: June 2024 – August 2024
 Location: Delhi, India · Remote
@@ -216,7 +221,7 @@ Key Highlights:
     content: `Why You Should Hire Tanish:
 1. Builder Mindset: He doesn't just write theoretical code; he builds real, working products (like TweniQ with real-time WebSockets and CopyWizz with native Electron and AI).
 2. Full-Stack + DevOps Versatility: Fluent across the complete stack—from React and modern CSS to Node.js/FastAPI backend architectures, all the way to Docker, Kubernetes, Terraform, and AWS CI/CD pipelines.
-3. Proven Real-World Experience: Three distinct internship experiences (CloudTechner, ADAYPTUS, Coding Blocks) delivering measurable results (25% faster load speeds, 30% code deduplication, production cloud infrastructure).
+3. Proven Real-World Experience: Three distinct internship experiences led by CloudTechner Services (Primary/Main DevOps & Backend Engineer with AWS, Docker, K8s, Terraform, CI/CD), alongside ADAYPTUS (Backend Developer) and Coding Blocks (Full Stack Developer), delivering measurable production results.
 4. High Standards & Code Quality: Dedicated to clean architecture, intuitive UI/UX, and eliminating technical debt.
 5. Fast Independent Learner: Quickly masters emerging tools, frameworks, and APIs to deliver tangible outcomes on tight timelines.`,
   },

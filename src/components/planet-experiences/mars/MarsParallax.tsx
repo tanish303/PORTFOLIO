@@ -36,6 +36,8 @@ export function useMarsParallax(): ParallaxOffsets {
   const currentPos = useRef({ x: 0, y: 0 });
   const animFrameId = useRef<number | null>(null);
   const startTime = useRef(performance.now());
+  const lastUpdate = useRef(0);
+  const lastDispatched = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -77,23 +79,33 @@ export function useMarsParallax(): ParallaxOffsets {
       const cx = currentPos.current.x;
       const cy = currentPos.current.y;
 
-      // 3. Multi-layer depth shifts (in pixels)
-      setOffsets({
-        normX: cx,
-        normY: cy,
-        // Background moves with cinematic depth (distant mountains)
-        bgX: -cx * 42,
-        bgY: -cy * 26,
-        // Midground moves with pronounced perspective
-        midX: -cx * 68,
-        midY: -cy * 38,
-        // Foreground moves fastest (near rocks)
-        fgX: -cx * 95,
-        fgY: -cy * 50,
-        // UI floats with slight counter-perspective
-        uiX: cx * 12,
-        uiY: cy * 8,
-      });
+      // 3. Throttle React state reconciliations to ~30fps with delta gate for silk-smooth rendering
+      if (now - lastUpdate.current >= 33) {
+        const dx = Math.abs(cx - lastDispatched.current.x);
+        const dy = Math.abs(cy - lastDispatched.current.y);
+        if (dx > 0.002 || dy > 0.002) {
+          lastUpdate.current = now;
+          lastDispatched.current.x = cx;
+          lastDispatched.current.y = cy;
+
+          setOffsets({
+            normX: cx,
+            normY: cy,
+            // Background moves with cinematic depth (distant mountains)
+            bgX: -cx * 42,
+            bgY: -cy * 26,
+            // Midground moves with pronounced perspective
+            midX: -cx * 68,
+            midY: -cy * 38,
+            // Foreground moves fastest (near rocks)
+            fgX: -cx * 95,
+            fgY: -cy * 50,
+            // UI floats with slight counter-perspective
+            uiX: cx * 12,
+            uiY: cy * 8,
+          });
+        }
+      }
 
       animFrameId.current = requestAnimationFrame(updateLoop);
     };

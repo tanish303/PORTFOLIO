@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import type { FlightPhase } from '../../types/solar';
+import type { FlightPhase, FlightStatus } from '../../types/solar';
 
 interface CameraControllerProps {
   currentLocationPos: [number, number, number];
@@ -16,6 +16,8 @@ interface CameraControllerProps {
   flightPhase?: FlightPhase;
   phaseProgress?: number;
   isOverview: boolean;
+  flightStatus?: FlightStatus;
+  supernovaProgress?: number;
 }
 
 export const CameraController: React.FC<CameraControllerProps> = ({
@@ -31,6 +33,8 @@ export const CameraController: React.FC<CameraControllerProps> = ({
   flightPhase = 'IDLE',
   phaseProgress = 0,
   isOverview,
+  flightStatus = 'DOCKED',
+  supernovaProgress = 0,
 }) => {
   const { camera, gl } = useThree();
 
@@ -146,6 +150,35 @@ export const CameraController: React.FC<CameraControllerProps> = ({
 
   useFrame((state) => {
     const time = state.clock.getElapsedTime();
+
+    // 0. COSMIC SUPERNOVA CATACLYSM CAMERA
+    if (flightStatus === 'SUPERNOVA_EXPLODING' || flightStatus === 'SUPERNOVA_RESETTING') {
+      prevFlightPhase.current = 'IDLE';
+
+      // Dramatic cinematic pullback: camera backs up steadily to view the monumental expanding shockwave
+      const supernovaCam = targetCamPos.current.set(0, 52, 95);
+      const supernovaLook = targetLookAt.current.set(0, 0, 0);
+
+      camera.position.lerp(supernovaCam, 0.04);
+      currentLookAt.current.lerp(supernovaLook, 0.05);
+
+      // Camera Trauma & Shockwave Vibration during explosion
+      if (flightStatus === 'SUPERNOVA_EXPLODING') {
+        const trauma = Math.max(0, Math.pow(1 - supernovaProgress, 1.2) * 4.2);
+        camera.position.x += (Math.random() - 0.5) * trauma;
+        camera.position.y += (Math.random() - 0.5) * trauma;
+        camera.position.z += (Math.random() - 0.5) * trauma;
+      }
+
+      if ((camera as THREE.PerspectiveCamera).fov) {
+        const pCam = camera as THREE.PerspectiveCamera;
+        pCam.fov = THREE.MathUtils.lerp(pCam.fov, 48, 0.05);
+        pCam.updateProjectionMatrix();
+      }
+
+      camera.lookAt(currentLookAt.current);
+      return;
+    }
 
     if (isFlying) {
       const C_curr = new THREE.Vector3(...currentLocationPos);
