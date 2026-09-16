@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { knowledgeChunks, type KnowledgeChunk } from './knowledgeBase.ts';
+import { knowledgeChunks, type KnowledgeChunk } from './knowledgeBase';
 
 interface CachedEmbedding {
   id: string;

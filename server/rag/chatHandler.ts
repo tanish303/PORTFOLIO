@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'http';
 import fs from 'fs';
 import path from 'path';
-import { retrieveRelevantChunks } from './ragEngine.ts';
+import { retrieveRelevantChunks } from './ragEngine';
 
 interface HistoryMessage {
   role: 'user' | 'assistant';

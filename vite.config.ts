@@ -1,6 +1,6 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig, loadEnv, type Plugin } from 'vite'
-import { handleChatRequest } from './server/rag/chatHandler.ts'
+import { handleChatRequest } from './server/rag/chatHandler'
 
 function ragBackendPlugin(): Plugin {
   return {
