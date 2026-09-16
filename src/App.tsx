@@ -267,16 +267,16 @@ export function App() {
             setTimeout(() => {
               atmosphereFlowRef.current = 'skipping_clouds';
               setAtmosphereFlowPhase('skipping_clouds');
-            }, 600);
+            }, 180);
             setTimeout(() => {
               setActiveExperience(currentBody.id);
               atmosphereFlowRef.current = 'clearing';
               setAtmosphereFlowPhase('clearing');
-            }, 1400);
+            }, 420);
             setTimeout(() => {
               atmosphereFlowRef.current = 'idle';
               setAtmosphereFlowPhase('idle');
-            }, 2600);
+            }, 850);
           }
           return;
         }
@@ -291,7 +291,7 @@ export function App() {
 
       soundController.playTargetLock();
       setTargetBodyId(id);
-      const tFocus = 0.65; // Gentle, cinematic departure focus
+      const tFocus = 0.25; // Snappy, responsive departure focus
       focusDuration.current = tFocus;
       setIsOverview(false); // Smoothly stop overview mode, focus on current departure planet
 
@@ -359,11 +359,11 @@ export function App() {
       setIsOverview(true); // Return to full system overview
       atmosphereFlowRef.current = 'clearing';
       setAtmosphereFlowPhase('clearing');
-    }, 800);
+    }, 350);
     setTimeout(() => {
       atmosphereFlowRef.current = 'idle';
       setAtmosphereFlowPhase('idle');
-    }, 1900);
+    }, 750);
   }, []);
 
   // Physics & Animation Loop Frame Callback
@@ -448,7 +448,7 @@ export function App() {
           }
 
           case 'HOLD_DEPARTURE': {
-            const dur = 0.25;
+            const dur = 0.15;
             const p = THREE.MathUtils.clamp(tInPhase / dur, 0, 1);
             phaseP = p;
 
@@ -456,7 +456,7 @@ export function App() {
             const surfacePos = C_curr.clone().addScaledVector(launchDir.current, currentBody.radius + 0.2);
             rocketSimPos.current.copy(surfacePos);
             rocketSimVel.current.copy(launchDir.current);
-            currentSpeed = 7.8 + p * 4.0;
+            currentSpeed = 7.8 + p * 6.0;
 
             if (tInPhase >= dur) {
               setFlightPhase('VERTICAL_ASCENT');
@@ -467,7 +467,7 @@ export function App() {
           }
 
           case 'VERTICAL_ASCENT': {
-            const dur = 0.55;
+            const dur = 0.45;
             const p = THREE.MathUtils.clamp(tInPhase / dur, 0, 1);
             phaseP = p;
 
@@ -481,7 +481,7 @@ export function App() {
             rocketSimPos.current.copy(ascentPos);
 
             // Velocity vector points strictly along outward launch normal
-            const ascentSpeed = 12.0 + easeAscent * 24.0;
+            const ascentSpeed = 16.0 + easeAscent * 28.0;
             const velocity = launchDir.current.clone().multiplyScalar(ascentSpeed);
             rocketSimVel.current.copy(velocity);
             currentSpeed = ascentSpeed;
@@ -495,7 +495,7 @@ export function App() {
           }
 
           case 'TRANSITION_TURN': {
-            const dur = 1.05; // Majestic, smooth banking turn
+            const dur = 0.45; // Smooth, agile banking turn
             const p = THREE.MathUtils.clamp(tInPhase / dur, 0, 1);
             phaseP = p;
 
@@ -506,7 +506,7 @@ export function App() {
             const ease = p * p * (3 - 2 * p);
             const turnDir = launchDir.current.clone().lerp(toDest, ease).normalize();
 
-            const turnSpeed = 24.0 + ease * 18.0;
+            const turnSpeed = 36.0 + ease * 28.0;
             const velocity = turnDir.clone().multiplyScalar(turnSpeed);
             rocketSimVel.current.copy(velocity);
             rocketSimPos.current.addScaledVector(velocity, dt);
@@ -543,14 +543,14 @@ export function App() {
               }
             }
 
-            // Velocity-based movement: smooth, cinematic, and deliberate cruise
-            const cruiseSpeed = THREE.MathUtils.clamp(distToTarget * 0.5 + 16.0, 24.0, 48.0);
+            // Velocity-based movement: smooth, responsive, and swift cruise
+            const cruiseSpeed = THREE.MathUtils.clamp(distToTarget * 1.35 + 28.0, 52.0, 95.0);
             const velocity = cruiseDir.clone().multiplyScalar(cruiseSpeed);
             rocketSimVel.current.copy(velocity);
             rocketSimPos.current.addScaledVector(velocity, dt);
             currentSpeed = cruiseSpeed;
 
-            if (distToTarget <= targetBody.radius + 11.5) {
+            if (distToTarget <= targetBody.radius + 9.5) {
               setFlightPhase('APPROACH_DOCK');
               phaseStartTime.current = now;
               setFlightStatus('BRAKING');
@@ -568,7 +568,7 @@ export function App() {
             const remaining = distToTarget - surfaceContactDist;
 
             // Step 1: Rocket entering planet atmosphere (wisps, hypersonic speed lines, plasma entry glow)
-            if (remaining <= 7.5 && targetBody.id !== 'sun') {
+            if (remaining <= 7.0 && targetBody.id !== 'sun') {
               if (atmosphereFlowRef.current === 'idle') {
                 atmosphereFlowRef.current = 'entering';
                 setAtmosphereFlowPhase('entering');
@@ -578,7 +578,7 @@ export function App() {
             }
 
             // Step 2: Plunging through cloud strata ("skipping clouds" at supersonic speed)
-            if (remaining <= 4.0 && targetBody.id !== 'sun') {
+            if (remaining <= 3.5 && targetBody.id !== 'sun') {
               if (atmosphereFlowRef.current === 'entering') {
                 atmosphereFlowRef.current = 'skipping_clouds';
                 setAtmosphereFlowPhase('skipping_clouds');
@@ -589,8 +589,8 @@ export function App() {
             // For Sun: detonate early while plunging into the scorching solar corona (before physical surface impact!)
             const isSunTarget = targetBody.id === 'sun';
             const isTouchdown = isSunTarget
-              ? remaining <= 4.2 || distToTarget <= targetBody.radius + 4.5 || tInPhase > 2.5
-              : remaining <= 0.65 || distToTarget <= surfaceContactDist + 0.55 || tInPhase > 7.0;
+              ? remaining <= 4.2 || distToTarget <= targetBody.radius + 4.5 || tInPhase > 2.0
+              : remaining <= 1.2 || distToTarget <= surfaceContactDist + 1.0 || tInPhase > 1.8;
 
             if (isTouchdown) {
               let outwardNormal = rocketSimPos.current.clone().sub(liveTarget);
@@ -638,7 +638,7 @@ export function App() {
                 setTimeout(() => {
                   atmosphereFlowRef.current = 'idle';
                   setAtmosphereFlowPhase('idle');
-                }, 1400);
+                }, 550);
               }
 
               setFlightProgress(1.0);
@@ -646,7 +646,7 @@ export function App() {
               setCurrentSpeedKmS(7.8);
             } else {
               // Smooth deceleration towards surface with closing speed against orbiting body
-              const approachSpeed = THREE.MathUtils.clamp(remaining * 2.2 + 3.2, 3.5, 22.0);
+              const approachSpeed = THREE.MathUtils.clamp(remaining * 4.5 + 18.0, 18.0, 48.0);
               const velocity = approachDir.clone().multiplyScalar(approachSpeed);
               rocketSimVel.current.copy(velocity);
               rocketSimPos.current.addScaledVector(velocity, dt);
