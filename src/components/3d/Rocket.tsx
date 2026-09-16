@@ -48,8 +48,6 @@ export const Rocket: React.FC<RocketProps> = ({
   const _targetQuat = useRef(new THREE.Quaternion());
   const _nozzleLocal = useRef(new THREE.Vector3(0, -0.04, -0.75));
   const _nozzleWorld = useRef(new THREE.Vector3());
-  const _lerpHead = useRef(new THREE.Vector3());
-  const _lerpTail = useRef(new THREE.Vector3());
 
   // Glowing circular particle texture for exhaust
   const exhaustSprite = useMemo(() => {

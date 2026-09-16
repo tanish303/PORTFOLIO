@@ -28,7 +28,7 @@ export const SupernovaEffect: React.FC<SupernovaEffectProps> = ({
 
   // Particle system
   const particleCount = 1200;
-  const { particleDirections, particleSpeeds, particleColors, particleSizes } = useMemo(() => {
+  const { particleDirections, particleSpeeds, particleColors } = useMemo(() => {
     const dirs = new Float32Array(particleCount * 3);
     const speeds = new Float32Array(particleCount);
     const colors = new Float32Array(particleCount * 3);
