@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'http';
-import { handleChatRequest } from '../server/rag/chatHandler';
+import { handleChatRequest } from '../server/rag/chatHandler.js';
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
   await handleChatRequest(req, res, {

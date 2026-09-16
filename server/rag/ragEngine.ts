@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { knowledgeChunks, type KnowledgeChunk } from './knowledgeBase';
+import { knowledgeChunks, type KnowledgeChunk } from './knowledgeBase.js';
 
 interface CachedEmbedding {
   id: string;
